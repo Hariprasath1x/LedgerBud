@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - LedgerBud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white border-r border-gray-200">
+            <div class="h-full flex flex-col">
+                <!-- Logo -->
+                <div class="p-6 border-b border-gray-200">
+                    <h1 class="text-2xl font-semibold text-gray-900">LedgerBud</h1>
+                </div>
+
+                <!-- Navigation -->
+                <nav class="flex-1 p-4">
+                    <ul class="space-y-2">
+                        <li>
+                            <a href="dashboard.html" class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md">
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="add.html" class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md">
+                                <span>Add Transaction</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="history.html" class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md">
+                                <span>History</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="reports.html" class="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md">
+                                <span>Reports</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" id="logoutBtn" class="flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md">
+                                <span>Logout</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Navbar -->
+            <header class="bg-white border-b border-gray-200">
+                <div class="px-6 py-4 flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Reports</h2>
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600">Welcome, <span id="userName" class="font-medium text-gray-900"></span></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <!-- Monthly Trend Chart -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Monthly Trends</h3>
+                    <div id="monthlyTrendChart"></div>
+                </div>
+
+                <!-- Category Analysis -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <!-- Income by Category -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Income by Category</h3>
+                        <div id="incomeCategoryChart"></div>
+                    </div>
+
+                    <!-- Expense by Category -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-900 mb-4">Expense by Category</h3>
+                        <div id="expenseCategoryChart"></div>
+                    </div>
+                </div>
+
+                <!-- Savings Growth -->
+                <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
+                    <h3 class="text-lg font-semibold text-gray-900 mb-4">Savings Growth</h3>
+                    <div id="savingsGrowthChart"></div>
+                </div>
+
+                <!-- Summary Statistics -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Average Monthly Income -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        <h4 class="text-sm font-medium text-gray-600 mb-2">Average Monthly Income</h4>
+                        <p class="text-2xl font-semibold text-green-600" id="avgIncome">$0.00</p>
+                    </div>
+
+                    <!-- Average Monthly Expense -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        <h4 class="text-sm font-medium text-gray-600 mb-2">Average Monthly Expense</h4>
+                        <p class="text-2xl font-semibold text-red-600" id="avgExpense">$0.00</p>
+                    </div>
+
+                    <!-- Savings Rate -->
+                    <div class="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
+                        <h4 class="text-sm font-medium text-gray-600 mb-2">Savings Rate</h4>
+                        <p class="text-2xl font-semibold text-blue-600" id="savingsRate">0%</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/transactions.js"></script>
+    <script src="js/reports.js"></script>
+    <script>
+        // Check authentication
+        checkAuth();
+
+        // Display username
+        const userName = localStorage.getItem('userName');
+        if (userName) {
+            document.getElementById('userName').textContent = userName;
+        }
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+
+        // Load reports
+        document.addEventListener('DOMContentLoaded', function() {
+            loadReports();
+        });
+    </script>
+</body>
+</html>

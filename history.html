@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaction History - LedgerBud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar -->
+        <aside class="w-64 bg-white border-r border-gray-200">
+            <div class="h-full flex flex-col">
+                <!-- Logo -->
+                <div class="p-6 border-b border-gray-200">
+                    <h1 class="text-2xl font-semibold text-gray-900">LedgerBud</h1>
+                </div>
+
+                <!-- Navigation -->
+                <nav class="flex-1 p-4">
+                    <ul class="space-y-2">
+                        <li>
+                            <a href="dashboard.html" class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md">
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="add.html" class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md">
+                                <span>Add Transaction</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="history.html" class="flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md">
+                                <span>History</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="reports.html" class="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md">
+                                <span>Reports</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="#" id="logoutBtn" class="flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md">
+                                <span>Logout</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Navbar -->
+            <header class="bg-white border-b border-gray-200">
+                <div class="px-6 py-4 flex items-center justify-between">
+                    <h2 class="text-xl font-semibold text-gray-900">Transaction History</h2>
+                    <div class="flex items-center">
+                        <span class="text-sm text-gray-600">Welcome, <span id="userName" class="font-medium text-gray-900"></span></span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content Area -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <div class="bg-white border border-gray-200 rounded-lg shadow-sm">
+                    <!-- Filters Section -->
+                    <div class="px-6 py-4 border-b border-gray-200">
+                        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <!-- Search -->
+                            <div class="md:col-span-2">
+                                <input 
+                                    type="text" 
+                                    id="searchInput" 
+                                    placeholder="Search transactions..."
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                >
+                            </div>
+
+                            <!-- Type Filter -->
+                            <div>
+                                <select 
+                                    id="typeFilter"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                >
+                                    <option value="">All Types</option>
+                                    <option value="income">Income</option>
+                                    <option value="expense">Expense</option>
+                                    <option value="investment">Investment</option>
+                                    <option value="insurance">Insurance</option>
+                                </select>
+                            </div>
+
+                            <!-- Category Filter -->
+                            <div>
+                                <select 
+                                    id="categoryFilter"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                                >
+                                    <option value="">All Categories</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Table -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-b border-gray-200">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Description</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Category</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Type</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">Amount</th>
+                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-600 uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyTable" class="divide-y divide-gray-200">
+                                <!-- Transactions will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pagination -->
+                    <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                        <div class="text-sm text-gray-600">
+                            Showing <span id="showingStart">0</span> to <span id="showingEnd">0</span> of <span id="totalRecords">0</span> transactions
+                        </div>
+                        <div class="flex gap-2">
+                            <button 
+                                id="prevBtn"
+                                class="px-4 py-2 border border-gray-300 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled
+                            >
+                                Previous
+                            </button>
+                            <button 
+                                id="nextBtn"
+                                class="px-4 py-2 border border-gray-300 text-sm font-medium text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                                disabled
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="js/auth.js"></script>
+    <script src="js/transactions.js"></script>
+    <script>
+        // Check authentication
+        checkAuth();
+
+        // Display username
+        const userName = localStorage.getItem('userName');
+        if (userName) {
+            document.getElementById('userName').textContent = userName;
+        }
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            logout();
+        });
+
+        // Pagination variables
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        let allTransactions = [];
+        let filteredTransactions = [];
+
+        // Load all categories
+        const allCategories = ['Food', 'Travel', 'Rent', 'Recharges', 'OTT', 'EMI', 'Investment', 'Insurance'];
+        const categoryFilter = document.getElementById('categoryFilter');
+        allCategories.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat;
+            option.textContent = cat;
+            categoryFilter.appendChild(option);
+        });
+
+        // Load transactions
+        async function loadTransactions() {
+            try {
+                allTransactions = getTransactions();
+                filteredTransactions = [...allTransactions];
+                renderTable();
+            } catch (error) {
+                console.error('Error loading transactions:', error);
+            }
+        }
+
+        // Apply filters
+        function applyFilters() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const typeFilter = document.getElementById('typeFilter').value;
+            const categoryFilter = document.getElementById('categoryFilter').value;
+
+            filteredTransactions = allTransactions.filter(transaction => {
+                const matchesSearch = transaction.description.toLowerCase().includes(searchTerm);
+                const matchesType = !typeFilter || transaction.type === typeFilter;
+                const matchesCategory = !categoryFilter || transaction.category === categoryFilter;
+                
+                return matchesSearch && matchesType && matchesCategory;
+            });
+
+            currentPage = 1;
+            renderTable();
+        }
+
+        // Render table
+        function renderTable() {
+            const tbody = document.getElementById('historyTable');
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+            const pageTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+            tbody.innerHTML = '';
+
+            if (pageTransactions.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">
+                            No transactions found
+                        </td>
+                    </tr>
+                `;
+            } else {
+                pageTransactions.forEach(transaction => {
+                    const row = document.createElement('tr');
+                    row.className = 'hover:bg-gray-50';
+                    
+                    const typeColor = transaction.type === 'income' ? 'text-green-600' : 'text-red-600';
+                    const amountSign = transaction.type === 'income' ? '+' : '-';
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 text-sm text-gray-900">${transaction.date}</td>
+                        <td class="px-6 py-4 text-sm text-gray-900">${transaction.description}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${transaction.category}</td>
+                        <td class="px-6 py-4 text-sm">
+                            <span class="px-2 py-1 text-xs font-medium rounded ${transaction.type === 'income' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">
+                                ${transaction.type}
+                            </span>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-right font-medium ${typeColor}">${amountSign}$${transaction.amount.toFixed(2)}</td>
+                        <td class="px-6 py-4 text-center text-sm">
+                            <button class="text-red-600 hover:text-red-700 font-medium" onclick="deleteTransaction('${transaction.id}')">
+                                Delete
+                            </button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+
+            // Update pagination info
+            document.getElementById('showingStart').textContent = filteredTransactions.length > 0 ? startIndex + 1 : 0;
+            document.getElementById('showingEnd').textContent = Math.min(endIndex, filteredTransactions.length);
+            document.getElementById('totalRecords').textContent = filteredTransactions.length;
+
+            // Update pagination buttons
+            document.getElementById('prevBtn').disabled = currentPage === 1;
+            document.getElementById('nextBtn').disabled = endIndex >= filteredTransactions.length;
+        }
+
+        // Delete transaction
+        async function deleteTransaction(id) {
+            if (confirm('Are you sure you want to delete this transaction?')) {
+                try {
+                    removeTransaction(id);
+                    await loadTransactions();
+                } catch (error) {
+                    console.error('Error deleting transaction:', error);
+                }
+            }
+        }
+
+        // Event listeners
+        document.getElementById('searchInput').addEventListener('input', applyFilters);
+        document.getElementById('typeFilter').addEventListener('change', applyFilters);
+        document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+
+        document.getElementById('prevBtn').addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                renderTable();
+            }
+        });
+
+        document.getElementById('nextBtn').addEventListener('click', () => {
+            if (currentPage * itemsPerPage < filteredTransactions.length) {
+                currentPage++;
+                renderTable();
+            }
+        });
+
+        // Load transactions on page load
+        loadTransactions();
+    </script>
+</body>
+</html>
