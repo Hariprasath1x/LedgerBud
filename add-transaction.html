@@ -39,13 +39,39 @@
                                 <span>Reports</span>
                             </a>
                         </li>
-                        <li>
-                            <a href="#" id="logoutBtn" class="flex items-center px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md">
-                                <span>Logout</span>
-                            </a>
-                        </li>
                     </ul>
                 </nav>
+
+                <!-- User Profile Dropdown -->
+                <div class="p-4 border-t border-gray-200 relative">
+                    <button id="profileBtn" onclick="toggleProfileDropdown()" class="flex items-center w-full px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md">
+                        <div class="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center mr-3 overflow-hidden">
+                            <svg class="w-5 h-5 text-gray-500" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clip-rule="evenodd"></path>
+                            </svg>
+                        </div>
+                        <span>My Profile</span>
+                        <svg class="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </button>
+                    <!-- Dropdown Menu -->
+                    <div id="profileDropdown" class="hidden absolute bottom-full left-4 right-4 mb-2 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50">
+                        <a href="dashboard.html" class="flex items-center w-full px-4 py-3 text-sm font-medium text-gray-700 hover:bg-gray-100">
+                            <svg class="w-4 h-4 mr-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            <span>My Profile</span>
+                        </a>
+                        <div class="border-t border-gray-200"></div>
+                        <button id="logoutBtn" onclick="logout()" class="flex items-center w-full px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50">
+                            <svg class="w-4 h-4 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                            </svg>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
             </div>
         </aside>
 
@@ -183,6 +209,7 @@
     </div>
 
     <script src="js/api.js"></script>
+    <script src="js/auth.js"></script>
     <script>
         // Check authentication
         if (!localStorage.getItem('isLoggedIn')) {
@@ -194,14 +221,6 @@
         if (userEmail) {
             document.getElementById('userName').textContent = userEmail.split('@')[0];
         }
-
-        // Logout handler
-        document.getElementById('logoutBtn').addEventListener('click', function(e) {
-            e.preventDefault();
-            localStorage.removeItem('isLoggedIn');
-            localStorage.removeItem('userEmail');
-            window.location.href = 'index.html';
-        });
 
         // Categories based on transaction type
         const categories = {
