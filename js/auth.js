@@ -22,7 +22,7 @@
 // Replace these values with your Firebase project config
 // You can find these in: Firebase Console > Project Settings > Web App
 const firebaseConfig = {
-    apiKey: "AIzaSyDLQgC1Jbor7LPBDbdHCJhwL2a84_3Mo3A",
+    apiKey: "YOUR_API_KEY_HERE",
     authDomain: "ledgerbud.firebaseapp.com",
     projectId: "ledgerbud",
     storageBucket: "ledgerbud.firebasestorage.app",
