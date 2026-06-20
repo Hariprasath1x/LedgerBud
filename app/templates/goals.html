@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block title %}Goals{% endblock %}
+{% block page_title %}Savings Goals{% endblock %}
+
+{% block content %}
+<div class="flex-between mb-lg">
+  <div>
+    <div class="text-muted text-sm uppercase font-bold tracking-wide">Total Saved</div>
+    <div class="text-2xl font-bold text-success">₹{{ '{:,.0f}'.format(total_saved) }} <span class="text-lg text-muted">/ ₹{{ '{:,.0f}'.format(total_target) }}</span></div>
+  </div>
+  <button class="btn btn-primary" onclick="openModal('addGoalModal')">
+    <i data-lucide="plus"></i> New Goal
+  </button>
+</div>
+
+<!-- Active Goals -->
+<div class="grid-auto mb-2xl">
+  {% for g in goals %}
+  <div class="card" style="border-top: 4px solid {{ g.color }}">
+    <div class="flex-between mb-md">
+      <div class="flex-center gap-sm">
+        <div class="p-sm rounded" style="background: {{ g.color }}20; color: {{ g.color }}">
+          <i data-lucide="{{ g.icon }}"></i>
+        </div>
+        <div class="font-bold">{{ g.name }}</div>
+      </div>
+      <button class="btn-ghost btn-icon" onclick="deleteGoal({{ g.id }})">
+        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+      </button>
+    </div>
+    
+    <div class="text-sm text-muted mb-lg">{{ g.description or 'No description' }}</div>
+    
+    <div class="flex-between mb-xs">
+      <div class="font-bold">₹{{ '{:,.0f}'.format(g.current_amount) }}</div>
+      <div class="text-sm text-muted">₹{{ '{:,.0f}'.format(g.target_amount) }}</div>
+    </div>
+    
+    <div class="progress-bar-container" style="height: 10px;">
+      <div class="progress-bar" style="width: {{ g.progress_percentage }}%; background: {{ g.color }}"></div>
+    </div>
+    
+    <div class="flex-between mt-sm text-xs mb-lg">
+      <div class="text-primary-brand font-bold">{{ g.progress_percentage|round(1) }}% completed</div>
+      {% if g.target_date %}
+      <div class="text-muted">Target: {{ g.target_date.strftime('%b %Y') }}</div>
+      {% endif %}
+    </div>
+    
+    <form class="flex gap-sm" onsubmit="event.preventDefault(); contributeGoal({{ g.id }}, this.amount.value)">
+      <input type="number" step="0.01" name="amount" class="form-control" placeholder="Add ₹" required style="width: 100px;">
+      <button type="submit" class="btn btn-secondary w-full" style="justify-content: center;">Add Funds</button>
+    </form>
+  </div>
+  {% else %}
+  <div class="text-center p-2xl text-muted w-full" style="grid-column: 1 / -1;">
+    <i data-lucide="target" style="width: 48px; height: 48px; margin: 0 auto; opacity: 0.5;"></i>
+    <p class="mt-md mb-md">No active savings goals.</p>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Completed Goals -->
+{% if completed %}
+<h3 class="text-lg font-bold mb-md text-success flex-center gap-sm" style="justify-content: flex-start;">
+  <i data-lucide="check-circle"></i> Completed Goals
+</h3>
+<div class="grid-auto">
+  {% for g in completed %}
+  <div class="card card-glass" style="opacity: 0.8;">
+    <div class="flex-center gap-sm mb-sm">
+      <div class="p-sm rounded" style="background: var(--success-glow); color: var(--success)">
+        <i data-lucide="{{ g.icon }}"></i>
+      </div>
+      <div>
+        <div class="font-bold">{{ g.name }}</div>
+        <div class="text-xs text-success font-bold">Goal Reached!</div>
+      </div>
+    </div>
+    <div class="text-2xl font-bold mt-md">₹{{ '{:,.0f}'.format(g.target_amount) }}</div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="addGoalModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Create Savings Goal</h3>
+      <button class="modal-close" onclick="closeModal('addGoalModal')"><i data-lucide="x"></i></button>
+    </div>
+    <form method="POST" action="{{ url_for('goals.add') }}" class="flex flex-col gap-md">
+      <div class="form-group">
+        <label class="form-label">Goal Name</label>
+        <input type="text" name="name" class="form-control" required placeholder="e.g., Vacation Fund">
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Target Amount (₹)</label>
+          <input type="number" step="0.01" name="target_amount" class="form-control" required placeholder="50000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Already Saved (₹)</label>
+          <input type="number" step="0.01" name="current_amount" class="form-control" value="0.00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Target Date (Optional)</label>
+        <input type="date" name="target_date" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Description (Optional)</label>
+        <input type="text" name="description" class="form-control">
+      </div>
+      
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <div class="color-picker-group">
+            {% for c in colors %}
+            <label class="color-swatch" style="background: {{ c }}">
+              <input type="radio" name="color" value="{{ c }}" class="hidden" {% if loop.first %}checked{% endif %}>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Icon</label>
+          <div class="color-picker-group">
+            {% for i in icons %}
+            <label class="color-swatch flex-center" style="border: 1px solid var(--border); width: 32px; height: 32px; background: var(--bg-elevated);">
+              <input type="radio" name="icon" value="{{ i }}" class="hidden" {% if loop.first %}checked{% endif %}>
+              <i data-lucide="{{ i }}" style="width: 14px; height: 14px;"></i>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-full mt-md">Create Goal</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Select handling for color/icon swatches
+document.querySelectorAll('.color-swatch input').forEach(input => {
+  input.addEventListener('change', function() {
+    const group = this.closest('.color-picker-group');
+    group.querySelectorAll('.color-swatch').forEach(s => {
+      s.classList.remove('selected');
+      if(s.querySelector('i')) s.style.borderColor = 'var(--border)';
+    });
+    this.parentElement.classList.add('selected');
+    if(this.parentElement.querySelector('i')) this.parentElement.style.borderColor = 'var(--primary)';
+  });
+});
+document.querySelectorAll('.color-swatch input:checked').forEach(input => {
+  input.parentElement.classList.add('selected');
+  if(input.parentElement.querySelector('i')) input.parentElement.style.borderColor = 'var(--primary)';
+});
+
+function contributeGoal(id, amount) {
+  const formData = new FormData();
+  formData.append('amount', amount);
+  
+  fetch(`/goals/${id}/contribute`, {
+    method: 'POST',
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    if(data.success) {
+      showToast(`Added ₹${amount} to goal`);
+      setTimeout(() => window.location.reload(), 1000);
+    } else {
+      showToast(data.error || 'Failed to add funds', 'error');
+    }
+  });
+}
+
+function deleteGoal(id) {
+  if(!confirm('Delete this goal?')) return;
+  fetch(`/goals/${id}/delete`, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => { if(data.success) window.location.reload(); });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Transactions{% endblock %}
+{% block page_title %}Transactions{% endblock %}
+
+{% block content %}
+<div class="card mb-lg">
+  <form method="GET" action="{{ url_for('transactions.index') }}" class="grid-auto gap-md" style="align-items: flex-end;">
+    <div class="form-group">
+      <label class="form-label">Search</label>
+      <input type="text" name="search" class="form-control" placeholder="Description or Merchant" value="{{ filters.search }}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Wallet</label>
+      <select name="wallet_id" class="form-control">
+        <option value="">All Wallets</option>
+        {% for w in wallets %}
+        <option value="{{ w.id }}" {% if filters.wallet_id == w.id %}selected{% endif %}>{{ w.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Category</label>
+      <select name="category_id" class="form-control">
+        <option value="">All Categories</option>
+        {% for c in categories %}
+        <option value="{{ c.id }}" {% if filters.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Type</label>
+      <select name="type" class="form-control">
+        <option value="">All Types</option>
+        <option value="debit" {% if filters.type == 'debit' %}selected{% endif %}>Expense (Debit)</option>
+        <option value="credit" {% if filters.type == 'credit' %}selected{% endif %}>Income (Credit)</option>
+      </select>
+    </div>
+    <div class="form-group" style="grid-column: span 1;">
+      <button type="submit" class="btn btn-secondary w-full">Filter</button>
+    </div>
+  </form>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Description / Merchant</th>
+          <th>Wallet</th>
+          <th>Category</th>
+          <th style="text-align: right;">Amount</th>
+          <th style="width: 50px;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for txn in transactions.items %}
+        <tr>
+          <td>{{ txn.date.strftime('%d %b %Y') }}</td>
+          <td>
+            <div class="font-medium">{{ txn.merchant.canonical_name if txn.merchant else txn.merchant_name_raw }}</div>
+            {% if txn.merchant and txn.merchant.canonical_name != txn.description %}
+            <div class="text-xs text-muted" title="{{ txn.description }}">{{ txn.description[:40] }}{% if txn.description|length > 40 %}...{% endif %}</div>
+            {% endif %}
+          </td>
+          <td>{{ txn.wallet.name }}</td>
+          <td>
+            <select class="form-control" style="padding: 4px 24px 4px 8px; font-size: 0.75rem; background-color: transparent;" onchange="updateCategory({{ txn.id }}, this.value)">
+              <option value="">Uncategorized</option>
+              {% for c in categories %}
+              <option value="{{ c.id }}" {% if txn.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+              {% endfor %}
+            </select>
+          </td>
+          <td style="text-align: right;">
+            <div class="txn-amount {{ txn.type }}">
+              {{ '+' if txn.type == 'credit' else '-' }}₹{{ '{:,.2f}'.format(txn.amount) }}
+            </div>
+            {% if txn.balance_after %}
+            <div class="text-xs text-muted">Bal: ₹{{ '{:,.2f}'.format(txn.balance_after) }}</div>
+            {% endif %}
+          </td>
+          <td>
+            <button class="btn-ghost btn-icon text-danger" onclick="deleteTransaction({{ txn.id }})" title="Delete">
+              <i data-lucide="trash-2"></i>
+            </button>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center p-xl text-muted">No transactions found matching your filters.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  {% if transactions.pages > 1 %}
+  <div class="pagination">
+    {% if transactions.has_prev %}
+    <a href="{{ url_for('transactions.index', page=transactions.prev_num, **request.args) }}"><i data-lucide="chevron-left"></i></a>
+    {% endif %}
+    
+    {% for page_num in transactions.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+      {% if page_num %}
+        {% if page_num == transactions.page %}
+          <span class="current">{{ page_num }}</span>
+        {% else %}
+          <a href="{{ url_for('transactions.index', page=page_num, **request.args) }}">{{ page_num }}</a>
+        {% endif %}
+      {% else %}
+        <span style="border: none; background: transparent;">...</span>
+      {% endif %}
+    {% endfor %}
+
+    {% if transactions.has_next %}
+    <a href="{{ url_for('transactions.index', page=transactions.next_num, **request.args) }}"><i data-lucide="chevron-right"></i></a>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateCategory(txnId, categoryId) {
+  fetch(`/transactions/${txnId}/update-category`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ category_id: categoryId ? parseInt(categoryId) : null })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if(data.success) {
+      showToast('Category updated successfully');
+    }
+  })
+  .catch(err => {
+    showToast('Failed to update category', 'error');
+  });
+}
+
+function deleteTransaction(txnId) {
+  if(!confirm('Are you sure you want to delete this transaction? This will affect your balances and analytics.')) return;
+  
+  fetch(`/transactions/${txnId}/delete`, {
+    method: 'POST'
+  })
+  .then(res => res.json())
+  .then(data => {
+    if(data.success) {
+      window.location.reload();
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Budgets{% endblock %}
+{% block page_title %}Budgets — {{ current_month }}{% endblock %}
+
+{% block content %}
+<div class="flex-between mb-lg">
+  <div class="text-muted text-sm">Track your spending limits by category</div>
+  <button class="btn btn-primary" onclick="openModal('addBudgetModal')">
+    <i data-lucide="plus"></i> Create Budget
+  </button>
+</div>
+
+<div class="grid-2">
+  {% for data in budget_data %}
+  <div class="card {% if data.usage.is_exceeded %}border-danger{% endif %}">
+    <div class="flex-between mb-sm">
+      <div class="flex-center gap-sm">
+        <div class="p-sm rounded" style="background: {{ data.budget.category.color }}20; color: {{ data.budget.category.color }}">
+          <i data-lucide="{{ data.budget.category.icon or 'tag' }}"></i>
+        </div>
+        <div>
+          <div class="font-bold">{{ data.budget.name }}</div>
+          <div class="text-xs text-muted">{{ data.budget.category.name }} • {{ data.budget.period|title }}</div>
+        </div>
+      </div>
+      <button class="btn-ghost btn-icon" onclick="openModal('editBudgetModal{{ data.budget.id }}')">
+        <i data-lucide="edit-2"></i>
+      </button>
+    </div>
+    
+    <div class="flex-between mt-lg mb-xs">
+      <div class="font-bold">₹{{ '{:,.0f}'.format(data.usage.spent) }}</div>
+      <div class="text-sm text-muted">of ₹{{ '{:,.0f}'.format(data.usage.limit) }}</div>
+    </div>
+    
+    <div class="progress-bar-container">
+      <div class="progress-bar" style="width: {{ data.usage.percentage }}%; background: {% if data.usage.percentage >= 100 %}var(--danger){% elif data.usage.percentage > 80 %}var(--warning){% else %}var(--success){% endif %}"></div>
+    </div>
+    
+    <div class="flex-between mt-sm text-xs">
+      {% if data.usage.is_exceeded %}
+      <div class="text-danger font-bold">Over budget by ₹{{ '{:,.0f}'.format(data.usage.spent - data.usage.limit) }}</div>
+      {% else %}
+      <div class="text-success font-bold">₹{{ '{:,.0f}'.format(data.usage.remaining) }} left</div>
+      {% endif %}
+      <div class="text-muted">{{ data.usage.percentage }}% used</div>
+    </div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="editBudgetModal{{ data.budget.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Budget</h3>
+        <button class="modal-close" onclick="closeModal('editBudgetModal{{ data.budget.id }}')"><i data-lucide="x"></i></button>
+      </div>
+      <form method="POST" action="{{ url_for('budgets.edit', budget_id=data.budget.id) }}" class="flex flex-col gap-md">
+        <div class="form-group">
+          <label class="form-label">Budget Name</label>
+          <input type="text" name="name" class="form-control" required value="{{ data.budget.name }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select name="category_id" class="form-control" required>
+            {% for c in categories %}
+            <option value="{{ c.id }}" {% if data.budget.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount Limit (₹)</label>
+          <input type="number" step="0.01" name="amount" class="form-control" required value="{{ data.budget.amount }}">
+        </div>
+        <div class="flex gap-md mt-md">
+          <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+          <button type="button" class="btn btn-danger" onclick="deleteBudget({{ data.budget.id }})">Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center p-2xl text-muted w-full" style="grid-column: 1 / -1;">
+    <i data-lucide="sliders" style="width: 48px; height: 48px; margin: 0 auto; opacity: 0.5;"></i>
+    <p class="mt-md mb-md">No budgets created yet.</p>
+    <button class="btn btn-primary" onclick="openModal('addBudgetModal')">Create Your First Budget</button>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Add Modal -->
+<div class="modal-overlay" id="addBudgetModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Create Budget</h3>
+      <button class="modal-close" onclick="closeModal('addBudgetModal')"><i data-lucide="x"></i></button>
+    </div>
+    <form method="POST" action="{{ url_for('budgets.add') }}" class="flex flex-col gap-md">
+      <div class="form-group">
+        <label class="form-label">Budget Name</label>
+        <input type="text" name="name" class="form-control" required placeholder="e.g., Weekend Dining">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select name="category_id" class="form-control" required>
+          {% for c in categories %}
+          <option value="{{ c.id }}">{{ c.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Amount Limit (₹)</label>
+          <input type="number" step="0.01" name="amount" class="form-control" required placeholder="5000">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Period</label>
+          <select name="period" class="form-control" required>
+            <option value="monthly">Monthly</option>
+            <option value="weekly">Weekly</option>
+          </select>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-md">Create Budget</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function deleteBudget(id) {
+  if(!confirm('Delete this budget?')) return;
+  fetch(`/budgets/${id}/delete`, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => { if(data.success) window.location.reload(); });
+}
+</script>
+{% endblock %}

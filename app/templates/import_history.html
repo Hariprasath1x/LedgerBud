@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Import History{% endblock %}
+{% block page_title %}Statement Import History{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="table-wrapper">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>File Details</th>
+          <th>Institution & Period</th>
+          <th>Wallet</th>
+          <th>Status</th>
+          <th style="text-align: right;">Records</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for job in jobs %}
+        <tr>
+          <td style="white-space: nowrap;">
+            <div class="font-medium">{{ job.created_at.strftime('%d %b %Y') }}</div>
+            <div class="text-xs text-muted">{{ job.created_at.strftime('%H:%M') }}</div>
+          </td>
+          
+          <td>
+            <div class="flex-center gap-xs" style="justify-content: flex-start;">
+              <i data-lucide="file-text" style="width: 14px; height: 14px; color: var(--text-muted);"></i>
+              <span class="font-medium">{{ job.original_filename }}</span>
+            </div>
+            <div class="text-xs text-muted mt-xs uppercase tracking-wide">{{ job.file_type }}</div>
+          </td>
+          
+          <td>
+            <div class="font-medium">{{ job.institution_detected or 'Unknown' }}</div>
+            <div class="text-xs text-muted">
+              {% if job.statement_period_start and job.statement_period_end %}
+                {{ job.statement_period_start.strftime('%d %b') }} - {{ job.statement_period_end.strftime('%d %b %y') }}
+              {% else %}
+                Period unknown
+              {% endif %}
+            </div>
+          </td>
+          
+          <td>{{ job.wallet.name if job.wallet else 'None' }}</td>
+          
+          <td>
+            {% if job.status == 'completed' %}
+              <span class="badge badge-success"><i data-lucide="check-circle" style="width:12px;"></i> Completed</span>
+            {% elif job.status == 'failed' %}
+              <span class="badge badge-danger" title="{{ job.error_message }}"><i data-lucide="alert-circle" style="width:12px;"></i> Failed</span>
+            {% elif job.status == 'processing' %}
+              <span class="badge badge-warning"><i data-lucide="refresh-cw" style="width:12px;"></i> Processing</span>
+            {% else %}
+              <span class="badge" style="background: var(--bg-elevated);"><i data-lucide="clock" style="width:12px;"></i> {{ job.status|title }}</span>
+            {% endif %}
+          </td>
+          
+          <td style="text-align: right;">
+            {% if job.status == 'completed' %}
+              <div class="font-bold text-success">+{{ job.imported_count }} imported</div>
+              <div class="text-xs text-muted">
+                {{ job.total_records }} total
+                {% if job.duplicate_count > 0 %} • {{ job.duplicate_count }} dupes{% endif %}
+              </div>
+            {% else %}
+              <div class="text-muted">-</div>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="text-center p-xl text-muted">
+            <i data-lucide="history" style="width: 48px; height: 48px; margin: 0 auto; opacity: 0.5;"></i>
+            <div class="mt-md">No import history available.</div>
+            <a href="{{ url_for('ingestion.index') }}" class="btn btn-primary mt-sm">Import your first statement</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

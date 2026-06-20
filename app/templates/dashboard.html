@@ -1,0 +1,278 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Overview — {{ current_month }}{% endblock %}
+
+{% block content %}
+
+<!-- Top Stats Row -->
+<div class="grid-4 mb-xl">
+  <!-- Total Balance -->
+  <div class="stat-card" style="--accent-color: var(--primary)">
+    <div class="flex-between">
+      <div class="stat-label">Total Balance</div>
+      <div class="stat-icon" style="background: var(--primary-glow); color: var(--primary-light)">
+        <i data-lucide="wallet"></i>
+      </div>
+    </div>
+    <div class="stat-value">₹{{ '{:,.0f}'.format(total_balance) }}</div>
+    <div class="stat-sub">{{ wallets|length }} active wallets</div>
+  </div>
+
+  <!-- Income -->
+  <div class="stat-card" style="--accent-color: var(--success)">
+    <div class="flex-between">
+      <div class="stat-label">Income ({{ current_month }})</div>
+      <div class="stat-icon" style="background: var(--success-glow); color: var(--success)">
+        <i data-lucide="trending-up"></i>
+      </div>
+    </div>
+    <div class="stat-value text-success">₹{{ '{:,.0f}'.format(summary.income) }}</div>
+  </div>
+
+  <!-- Expenses -->
+  <div class="stat-card" style="--accent-color: var(--danger)">
+    <div class="flex-between">
+      <div class="stat-label">Expenses ({{ current_month }})</div>
+      <div class="stat-icon" style="background: var(--danger-glow); color: var(--danger)">
+        <i data-lucide="trending-down"></i>
+      </div>
+    </div>
+    <div class="stat-value text-danger">₹{{ '{:,.0f}'.format(summary.expense) }}</div>
+  </div>
+
+  <!-- Savings Rate -->
+  <div class="stat-card" style="--accent-color: var(--info)">
+    <div class="flex-between">
+      <div class="stat-label">Savings Rate</div>
+      <div class="stat-icon" style="background: var(--info-glow); color: var(--info)">
+        <i data-lucide="piggy-bank"></i>
+      </div>
+    </div>
+    <div class="stat-value">{{ summary.savings_rate }}%</div>
+    <div class="stat-sub">Saved ₹{{ '{:,.0f}'.format(summary.savings) }}</div>
+  </div>
+</div>
+
+<div class="grid-3 mb-xl">
+  <!-- Main Column -->
+  <div style="grid-column: span 2;" class="flex flex-col gap-lg">
+    
+    <!-- Cashflow Chart -->
+    <div class="card h-full">
+      <div class="card-header">
+        <div class="card-title">Cashflow Trend</div>
+      </div>
+      <div style="height: 250px;">
+        <canvas id="cashflowChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Recent Transactions -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Transactions</div>
+        <a href="{{ url_for('transactions.index') }}" class="btn btn-ghost btn-sm">View All</a>
+      </div>
+      
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Merchant / Description</th>
+              <th>Category</th>
+              <th style="text-align: right;">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for txn in recent_transactions %}
+            <tr>
+              <td>{{ txn.date.strftime('%b %d') }}</td>
+              <td>
+                <div class="font-medium">{{ txn.merchant.canonical_name if txn.merchant else txn.merchant_name_raw }}</div>
+                <div class="text-xs text-muted">{{ txn.wallet.name }}</div>
+              </td>
+              <td>
+                {% if txn.category %}
+                <span class="badge" style="background: {{ txn.category.color }}20; color: {{ txn.category.color }}; border: 1px solid {{ txn.category.color }}40">
+                  {{ txn.category.name }}
+                </span>
+                {% else %}
+                <span class="badge" style="background: var(--bg-elevated); color: var(--text-muted)">Uncategorized</span>
+                {% endif %}
+              </td>
+              <td style="text-align: right;">
+                <div class="txn-amount {{ txn.type }}">
+                  {{ '+' if txn.type == 'credit' else '-' }}₹{{ '{:,.2f}'.format(txn.amount) }}
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" style="text-align: center; padding: var(--space-xl);">
+                <div class="text-muted">No recent transactions</div>
+                <a href="{{ url_for('ingestion.index') }}" class="btn btn-primary mt-md">Import Statement</a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Sidebar -->
+  <div class="flex flex-col gap-lg">
+    
+    <!-- Health Score -->
+    <div class="card card-gradient">
+      <div class="card-header">
+        <div class="card-title">Financial Health</div>
+        <a href="{{ url_for('analytics.index') }}" class="btn btn-ghost btn-sm">Details</a>
+      </div>
+      <div class="flex-center p-md">
+        <div class="health-ring-container">
+          <div class="health-ring">
+            <svg viewBox="0 0 36 36">
+              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--bg-elevated)" stroke-width="3" />
+              <path class="ring-fill" stroke-dasharray="{{ health.score }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" />
+            </svg>
+            <div class="health-ring-value">
+              <div class="health-ring-score">{{ health.score }}</div>
+              <div class="health-ring-grade">Grade {{ health.grade }}</div>
+            </div>
+          </div>
+          <div class="font-medium text-primary mt-sm">{{ health.label }}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Smart Insights -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title flex-center gap-xs">
+          <i data-lucide="sparkles" style="color: var(--warning); width: 16px; height: 16px;"></i>
+          Insights
+        </div>
+      </div>
+      <div class="flex flex-col gap-sm">
+        {% for insight in insights %}
+        <div class="insight-card {{ insight.type }}" style="padding: 12px; gap: 12px;">
+          <div class="insight-icon" style="width: 28px; height: 28px;">
+            <i data-lucide="{{ insight.icon }}" style="width: 14px; height: 14px;"></i>
+          </div>
+          <div>
+            <div class="insight-title" style="font-size: 0.8rem;">{{ insight.title }}</div>
+            <div class="insight-message" style="font-size: 0.75rem;">{{ insight.message }}</div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center p-lg text-muted text-sm">
+          No insights available for this month yet. Import more statements!
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Spending Breakdown -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Top Categories</div>
+      </div>
+      <div class="flex flex-col gap-md">
+        {% for cat in categories[:5] %}
+        <div>
+          <div class="flex-between mb-xs">
+            <span class="text-sm font-medium">{{ cat.category }}</span>
+            <span class="text-sm">₹{{ '{:,.0f}'.format(cat.amount) }} ({{ cat.percentage }}%)</span>
+          </div>
+          <div class="progress-bar-container" style="height: 6px;">
+            <div class="progress-bar" style="width: {{ cat.percentage }}%; background: {{ cat.color }}"></div>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center p-md text-muted text-sm">No expenses this month</div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+  const trendsData = {{ trends | tojson }};
+  if(trendsData && trendsData.length > 0) {
+    const ctx = document.getElementById('cashflowChart').getContext('2d');
+    
+    // Reverse because trends come newest first, we want oldest first for x-axis
+    trendsData.reverse();
+    
+    const labels = trendsData.map(d => {
+      const parts = d.month.split('-');
+      const date = new Date(parts[0], parts[1] - 1);
+      return date.toLocaleString('default', { month: 'short' });
+    });
+    
+    const incomeData = trendsData.map(d => d.income);
+    const expenseData = trendsData.map(d => d.expense);
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Income',
+            data: incomeData,
+            backgroundColor: 'rgba(0, 212, 168, 0.2)',
+            borderColor: '#00d4a8',
+            borderWidth: 1,
+            borderRadius: 4
+          },
+          {
+            label: 'Expenses',
+            data: expenseData,
+            backgroundColor: 'rgba(255, 71, 87, 0.2)',
+            borderColor: '#ff4757',
+            borderWidth: 1,
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: 'rgba(35, 40, 64, 0.5)' },
+            ticks: {
+              callback: function(value) {
+                if(value >= 100000) return '₹' + (value/100000).toFixed(1) + 'L';
+                if(value >= 1000) return '₹' + (value/1000).toFixed(0) + 'k';
+                return '₹' + value;
+              }
+            }
+          },
+          x: {
+            grid: { display: false }
+          }
+        },
+        plugins: {
+          legend: { position: 'top', align: 'end' }
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

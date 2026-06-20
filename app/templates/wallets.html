@@ -1,0 +1,188 @@
+{% extends "base.html" %}
+
+{% block title %}Wallets{% endblock %}
+{% block page_title %}Wallets{% endblock %}
+
+{% block content %}
+<div class="flex-between mb-lg">
+  <div>
+    <div class="text-muted text-sm uppercase font-bold tracking-wide">Total Balance</div>
+    <div class="text-2xl font-bold">₹{{ '{:,.2f}'.format(total_balance) }}</div>
+  </div>
+  <button class="btn btn-primary" onclick="openModal('addWalletModal')">
+    <i data-lucide="plus"></i> Add Wallet
+  </button>
+</div>
+
+<div class="grid-3">
+  {% for stat in wallet_stats %}
+  <div class="card" style="border-top: 4px solid {{ stat.wallet.color }}">
+    <div class="flex-between mb-md">
+      <div class="flex-center gap-sm">
+        <div class="p-sm rounded" style="background: {{ stat.wallet.color }}20; color: {{ stat.wallet.color }}">
+          <i data-lucide="wallet"></i>
+        </div>
+        <div>
+          <div class="font-bold">{{ stat.wallet.name }}</div>
+          <div class="text-xs text-muted">{{ stat.wallet.institution or stat.wallet.type|title }}</div>
+        </div>
+      </div>
+      <div class="dropdown">
+        <button class="btn-ghost btn-icon" onclick="openModal('editWalletModal{{ stat.wallet.id }}')">
+          <i data-lucide="edit-2"></i>
+        </button>
+      </div>
+    </div>
+    
+    <div class="text-xl font-bold mb-lg">₹{{ '{:,.2f}'.format(stat.wallet.balance) }}</div>
+    
+    <div class="divider"></div>
+    
+    <div class="flex-between text-sm">
+      <div>
+        <div class="text-muted text-xs">In</div>
+        <div class="text-success">₹{{ '{:,.0f}'.format(stat.total_credits) }}</div>
+      </div>
+      <div>
+        <div class="text-muted text-xs">Out</div>
+        <div class="text-danger">₹{{ '{:,.0f}'.format(stat.total_debits) }}</div>
+      </div>
+      <div>
+        <div class="text-muted text-xs">Txns</div>
+        <div class="text-primary-brand">{{ stat.txn_count }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Wallet Modal -->
+  <div class="modal-overlay" id="editWalletModal{{ stat.wallet.id }}">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 class="modal-title">Edit Wallet</h3>
+        <button class="modal-close" onclick="closeModal('editWalletModal{{ stat.wallet.id }}')"><i data-lucide="x"></i></button>
+      </div>
+      <form method="POST" action="{{ url_for('wallets.edit', wallet_id=stat.wallet.id) }}" class="flex flex-col gap-md">
+        <div class="form-group">
+          <label class="form-label">Name</label>
+          <input type="text" name="name" class="form-control" required value="{{ stat.wallet.name }}">
+        </div>
+        <div class="grid-2">
+          <div class="form-group">
+            <label class="form-label">Type</label>
+            <select name="type" class="form-control">
+              {% for t in wallet_types %}
+              <option value="{{ t }}" {% if stat.wallet.type == t %}selected{% endif %}>{{ t|title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Current Balance (₹)</label>
+            <input type="number" step="0.01" name="balance" class="form-control" required value="{{ stat.wallet.balance }}">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Institution / Bank Name (Optional)</label>
+          <input type="text" name="institution" class="form-control" value="{{ stat.wallet.institution or '' }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Color</label>
+          <div class="color-picker-group">
+            {% for c in colors %}
+            <label class="color-swatch {% if stat.wallet.color == c %}selected{% endif %}" style="background: {{ c }}">
+              <input type="radio" name="color" value="{{ c }}" class="hidden" {% if stat.wallet.color == c %}checked{% endif %}>
+            </label>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="flex gap-md mt-md">
+          <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
+          <button type="button" class="btn btn-danger" onclick="deleteWallet({{ stat.wallet.id }})">Delete</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <div class="text-center p-2xl text-muted w-full" style="grid-column: 1 / -1;">
+    <i data-lucide="wallet" style="width: 48px; height: 48px; margin: 0 auto; opacity: 0.5;"></i>
+    <p class="mt-md">No wallets created yet.</p>
+    <button class="btn btn-primary mt-md" onclick="openModal('addWalletModal')">Add Your First Wallet</button>
+  </div>
+  {% endfor %}
+</div>
+
+<!-- Add Wallet Modal -->
+<div class="modal-overlay" id="addWalletModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">Add Wallet</h3>
+      <button class="modal-close" onclick="closeModal('addWalletModal')"><i data-lucide="x"></i></button>
+    </div>
+    <form method="POST" action="{{ url_for('wallets.add') }}" class="flex flex-col gap-md">
+      <div class="form-group">
+        <label class="form-label">Wallet Name</label>
+        <input type="text" name="name" class="form-control" required placeholder="e.g., HDFC Checking">
+      </div>
+      <div class="grid-2">
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select name="type" class="form-control">
+            {% for t in wallet_types %}
+            <option value="{{ t }}">{{ t|title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Opening Balance (₹)</label>
+          <input type="number" step="0.01" name="balance" class="form-control" required value="0.00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Institution / Bank Name (Optional)</label>
+        <input type="text" name="institution" class="form-control" placeholder="e.g., HDFC Bank">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Number (Optional)</label>
+        <input type="text" name="account_number" class="form-control" placeholder="Last 4 digits">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Color</label>
+        <div class="color-picker-group">
+          {% for c in colors %}
+          <label class="color-swatch" style="background: {{ c }}">
+            <input type="radio" name="color" value="{{ c }}" class="hidden" {% if loop.first %}checked{% endif %}>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-md">Add Wallet</button>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Handle color swatch selection visually
+document.querySelectorAll('.color-swatch input').forEach(input => {
+  input.addEventListener('change', function() {
+    const group = this.closest('.color-picker-group');
+    group.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+    this.parentElement.classList.add('selected');
+  });
+});
+
+// Select default colors in modals
+document.querySelectorAll('.color-swatch input:checked').forEach(input => {
+  input.parentElement.classList.add('selected');
+});
+
+function deleteWallet(id) {
+  if(!confirm('Are you sure you want to delete this wallet? This cannot be undone.')) return;
+  fetch(`/wallets/${id}/delete`, { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success) window.location.reload();
+    });
+}
+</script>
+{% endblock %}

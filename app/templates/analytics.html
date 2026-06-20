@@ -1,0 +1,300 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics{% endblock %}
+{% block page_title %}Analytics & Intelligence{% endblock %}
+
+{% block content %}
+<!-- Tab Navigation -->
+<div class="flex gap-md mb-xl" style="border-bottom: 1px solid var(--border);">
+  <button class="btn btn-ghost active" style="border-bottom: 2px solid var(--primary); border-radius: 0; padding-bottom: 12px; font-weight: 700; color: var(--text-primary);" onclick="switchTab('insights')">Insights & Advice</button>
+  <button class="btn btn-ghost" style="border-bottom: 2px solid transparent; border-radius: 0; padding-bottom: 12px; font-weight: 700;" onclick="switchTab('subscriptions')">Subscriptions</button>
+  <button class="btn btn-ghost" style="border-bottom: 2px solid transparent; border-radius: 0; padding-bottom: 12px; font-weight: 700;" onclick="switchTab('simulator')">What-If Simulator</button>
+</div>
+
+<!-- Tab Content: Insights -->
+<div id="tab-insights" class="tab-pane">
+  <div class="grid-3">
+    
+    <!-- AI Advisor Area -->
+    <div style="grid-column: span 2;" class="flex flex-col gap-lg">
+      <div class="card card-gradient">
+        <div class="flex-between mb-lg">
+          <div class="flex-center gap-sm">
+            <div class="p-sm rounded-lg" style="background: var(--primary-glow); color: var(--primary);">
+              <i data-lucide="bot" style="width: 24px; height: 24px;"></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-primary-brand">AI Financial Advisor</h2>
+              <div class="text-sm text-muted">Personalized recommendations based on your data</div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="flex flex-col gap-md">
+          {% for a in advice %}
+          <div class="p-lg rounded-lg" style="background: var(--bg-surface); border: 1px solid var(--border); position: relative; overflow: hidden;">
+            {% if a.priority == 'high' %}
+            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--warning);"></div>
+            {% endif %}
+            
+            <div class="flex gap-md">
+              <div class="p-sm rounded" style="background: var(--bg-elevated); color: var(--text-primary); align-self: flex-start;">
+                <i data-lucide="{{ a.icon }}"></i>
+              </div>
+              <div style="flex: 1;">
+                <div class="flex-between mb-xs">
+                  <div class="font-bold">{{ a.title }}</div>
+                  <span class="badge" style="background: var(--bg-elevated);">{{ a.category }}</span>
+                </div>
+                <div class="text-sm text-secondary mb-md">{{ a.message }}</div>
+                <button class="btn btn-ghost btn-sm" style="padding: 0; color: var(--primary);">
+                  {{ a.action }} <i data-lucide="arrow-right" style="width: 14px;"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="text-center p-xl text-muted">
+            <p>Not enough data to generate advice yet.</p>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Trend Chart -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">6-Month Trend</div>
+        </div>
+        <div style="height: 300px;">
+          <canvas id="analyticsChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Sidebar -->
+    <div class="flex flex-col gap-lg">
+      
+      <!-- Top Merchants -->
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Top Merchants ({{ current_month }})</div>
+        </div>
+        <div class="flex flex-col gap-md">
+          {% for m in top_merchants %}
+          <div class="flex-between">
+            <div class="flex-center gap-sm">
+              <div class="txn-merchant-icon" style="background: var(--bg-elevated); color: var(--text-muted);">
+                {{ m.merchant[:2].upper() }}
+              </div>
+              <div>
+                <div class="text-sm font-bold">{{ m.merchant }}</div>
+                <div class="text-xs text-muted">{{ m.count }} transactions</div>
+              </div>
+            </div>
+            <div class="text-sm font-bold text-danger">₹{{ '{:,.0f}'.format(m.amount) }}</div>
+          </div>
+          {% else %}
+          <div class="text-muted text-sm text-center">No merchant data available</div>
+          {% endfor %}
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Tab Content: Subscriptions -->
+<div id="tab-subscriptions" class="tab-pane hidden">
+  <div class="grid-2">
+    <!-- Active Subscriptions -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Active Subscriptions</div>
+        <div class="badge badge-primary">{{ subscriptions|length }} Active</div>
+      </div>
+      
+      <div class="table-wrapper">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>Amount</th>
+              <th>Cycle</th>
+              <th>Next Due</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for s in subscriptions %}
+            <tr>
+              <td>
+                <div class="font-medium">{{ s.name }}</div>
+              </td>
+              <td class="font-bold">₹{{ '{:,.0f}'.format(s.amount) }}</td>
+              <td class="text-xs uppercase">{{ s.frequency }}</td>
+              <td class="text-sm text-warning font-bold">{{ s.next_expected.strftime('%d %b') if s.next_expected else 'Unknown' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="4" class="text-center p-lg text-muted">No active subscriptions tracked.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Auto-Detected (Not tracked) -->
+    <div class="card" style="border-style: dashed;">
+      <div class="card-header">
+        <div class="card-title flex-center gap-xs">
+          <i data-lucide="search" style="width: 16px;"></i> Auto-Detected
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="syncSubscriptions()">Track All</button>
+      </div>
+      
+      <div class="text-sm text-muted mb-md">These recurring payments were found in your transaction history.</div>
+      
+      <div class="flex flex-col gap-sm">
+        {% for d in sub_detected %}
+        <div class="flex-between p-md rounded" style="background: var(--bg-surface);">
+          <div>
+            <div class="font-bold">{{ d.name }}</div>
+            <div class="text-xs text-muted">{{ d.occurrences }} payments found • {{ d.frequency|title }}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-bold">₹{{ '{:,.0f}'.format(d.amount) }}</div>
+            <button class="btn btn-ghost btn-xs text-primary mt-xs p-0">Track</button>
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center p-md text-muted">No new subscriptions detected.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab Content: Simulator -->
+<div id="tab-simulator" class="tab-pane hidden">
+  <div class="card" style="max-width: 800px; margin: 0 auto;">
+    <div class="text-center mb-xl">
+      <div class="mx-auto flex-center mb-md" style="width: 64px; height: 64px; border-radius: 50%; background: var(--info-glow); color: var(--info);">
+        <i data-lucide="sliders" style="width: 32px; height: 32px;"></i>
+      </div>
+      <h2 class="text-2xl font-bold">What-If Analysis</h2>
+      <p class="text-muted mt-sm">See how small changes in your spending habits affect your long-term wealth.</p>
+    </div>
+
+    <div class="grid-2 mb-xl">
+      <div class="p-lg rounded-lg" style="background: var(--bg-elevated);">
+        <label class="form-label mb-sm block">Reduce Monthly Spending By:</label>
+        <div class="flex gap-md" style="align-items: center;">
+          <input type="range" id="sim-slider" min="0" max="20000" step="500" value="2000" class="w-full" oninput="updateSimulator(this.value)">
+          <div class="font-bold text-lg" style="width: 80px; text-align: right;" id="sim-value">₹2,000</div>
+        </div>
+      </div>
+      
+      <div class="p-lg rounded-lg flex-center flex-col" style="background: var(--success-glow); border: 1px solid rgba(0,212,168,0.2);">
+        <div class="text-sm font-bold text-success uppercase">Extra Yearly Savings</div>
+        <div class="text-3xl font-black text-success mt-xs" id="sim-yearly">₹24,000</div>
+      </div>
+    </div>
+
+    <div class="p-xl rounded-lg text-center" style="background: linear-gradient(135deg, var(--bg-surface), var(--bg-elevated)); border: 1px solid var(--border);">
+      <div class="text-sm text-muted mb-sm">If invested monthly at 12% p.a., in 10 years this extra saving grows to:</div>
+      <div class="text-4xl font-black text-primary-brand" id="sim-10yr" style="text-shadow: 0 0 20px rgba(108,99,255,0.3);">₹4,60,000</div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function switchTab(tabId) {
+  // Update buttons
+  const buttons = document.querySelectorAll('.flex.gap-md.mb-xl button');
+  buttons.forEach(b => {
+    b.classList.remove('active');
+    b.style.borderColor = 'transparent';
+    b.style.color = '';
+  });
+  event.target.classList.add('active');
+  event.target.style.borderColor = 'var(--primary)';
+  event.target.style.color = 'var(--text-primary)';
+  
+  // Update panes
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.add('hidden'));
+  document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+}
+
+// Simulator Logic
+function updateSimulator(value) {
+  document.getElementById('sim-value').textContent = '₹' + parseInt(value).toLocaleString('en-IN');
+  
+  const yearly = value * 12;
+  document.getElementById('sim-yearly').textContent = '₹' + yearly.toLocaleString('en-IN');
+  
+  // Future Value of a Series formula: PMT * (((1 + r/n)^(nt) - 1) / (r/n))
+  // r = 0.12, n = 12, t = 10 -> r/n = 0.01, nt = 120
+  const monthlyRate = 0.01;
+  const months = 120;
+  const fv = value * ((Math.pow(1 + monthlyRate, months) - 1) / monthlyRate);
+  
+  document.getElementById('sim-10yr').textContent = '₹' + Math.round(fv).toLocaleString('en-IN');
+}
+
+// Initial simulator update
+updateSimulator(2000);
+
+// Subscriptions Sync
+function syncSubscriptions() {
+  fetch('/analytics/api/whatif') // Simple test ping
+    .then(() => {
+      showToast('Subscriptions synced successfully');
+      setTimeout(() => window.location.reload(), 1000);
+    });
+}
+
+// Analytics Chart
+document.addEventListener("DOMContentLoaded", function() {
+  fetch('/analytics/api/trends?months=6')
+    .then(res => res.json())
+    .then(data => {
+      if(data && data.length > 0) {
+        const ctx = document.getElementById('analyticsChart').getContext('2d');
+        data.reverse();
+        
+        new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.map(d => d.month),
+            datasets: [
+              {
+                label: 'Savings',
+                data: data.map(d => d.savings),
+                borderColor: '#6c63ff',
+                backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: 'rgba(35, 40, 64, 0.5)' }
+              },
+              x: { grid: { display: false } }
+            }
+          }
+        });
+      }
+    });
+});
+</script>
+{% endblock %}

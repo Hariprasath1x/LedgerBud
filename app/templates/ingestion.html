@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}Smart Import{% endblock %}
+{% block page_title %}Smart Statement Ingestion Engine{% endblock %}
+
+{% block content %}
+<div class="grid-3">
+  
+  <!-- Upload Flow -->
+  <div style="grid-column: span 2;" class="flex flex-col gap-lg">
+    
+    <!-- Step 1: Upload -->
+    <div class="card" id="step-upload">
+      <div class="card-header">
+        <div class="card-title">1. Upload Statement</div>
+      </div>
+      
+      <form id="upload-form" class="flex flex-col gap-lg">
+        <div class="form-group" style="max-width: 300px;">
+          <label class="form-label">Destination Wallet</label>
+          <select name="wallet_id" id="wallet-select" class="form-control" required>
+            <option value="">Select Wallet...</option>
+            {% for w in wallets %}
+            <option value="{{ w.id }}">{{ w.name }} ({{ w.institution or w.type }})</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="upload-icon">
+            <i data-lucide="file-up"></i>
+          </div>
+          <div class="upload-title">Click to upload or drag and drop</div>
+          <div class="upload-subtitle">Bank statement PDFs, CSVs, or Excel files</div>
+          <div class="upload-accepted">
+            <span class="upload-type-badge">PDF (Preferred)</span>
+            <span class="upload-type-badge">CSV</span>
+            <span class="upload-type-badge">XLSX</span>
+          </div>
+          <input type="file" id="file-input" name="file" accept=".pdf,.csv,.xlsx,.xls" style="display: none;">
+        </div>
+
+        <div id="file-selected-info" class="hidden flex-between p-md rounded-lg" style="background: var(--bg-elevated); border: 1px solid var(--border-light);">
+          <div class="flex-center gap-sm">
+            <i data-lucide="file" style="color: var(--primary);"></i>
+            <span id="selected-filename" class="font-medium">filename.pdf</span>
+          </div>
+          <button type="button" class="btn btn-ghost text-danger btn-sm" onclick="clearFile()">Remove</button>
+        </div>
+
+        <button type="submit" id="upload-btn" class="btn btn-primary btn-lg w-full" disabled>
+          Analyze Statement
+        </button>
+      </form>
+      
+      <!-- Processing Overlay -->
+      <div id="processing-state" class="hidden text-center p-2xl">
+        <div class="spinner mx-auto" style="margin: 0 auto; width: 40px; height: 40px; border-width: 4px;"></div>
+        <h3 class="mt-md font-bold text-lg">Analyzing Statement</h3>
+        <p class="text-muted text-sm mt-xs">Extracting transactions, detecting merchants, and categorizing...</p>
+      </div>
+    </div>
+
+    <!-- Step 2: Preview & Confirm -->
+    <div class="card hidden" id="step-preview">
+      <div class="card-header">
+        <div class="card-title">2. Review & Confirm</div>
+      </div>
+      
+      <div class="flex flex-col gap-lg">
+        
+        <!-- Detected Metadata -->
+        <div class="grid-3 p-md rounded-lg" style="background: var(--bg-elevated); border: 1px solid var(--border);">
+          <div>
+            <div class="text-xs text-muted uppercase font-bold">Institution</div>
+            <div class="font-medium text-primary" id="preview-inst">Detecting...</div>
+          </div>
+          <div>
+            <div class="text-xs text-muted uppercase font-bold">Statement Period</div>
+            <div class="font-medium" id="preview-period">Detecting...</div>
+          </div>
+          <div>
+            <div class="text-xs text-muted uppercase font-bold">Transactions</div>
+            <div class="font-medium">
+              <span id="preview-count" class="text-success font-bold">0</span> unique 
+              <span id="preview-dupes" class="text-muted text-sm ml-xs">(0 dupes ignored)</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sample Preview Table -->
+        <div>
+          <div class="text-sm font-bold mb-sm text-muted">SAMPLE EXTRACTED DATA (First 5 rows)</div>
+          <div class="table-wrapper">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Merchant / Description</th>
+                  <th style="text-align: right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody id="preview-table-body">
+                <!-- Injected via JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="flex gap-md">
+          <button type="button" class="btn btn-primary" style="flex: 2;" id="commit-btn" onclick="commitImport()">
+            <i data-lucide="check-circle"></i> Import Transactions
+          </button>
+          <button type="button" class="btn btn-secondary" style="flex: 1;" onclick="resetFlow()">Cancel</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Step 3: Success -->
+    <div class="card hidden" id="step-success">
+      <div class="text-center p-xl">
+        <div class="mx-auto flex-center mb-lg" style="width: 64px; height: 64px; border-radius: 50%; background: var(--success-glow); color: var(--success);">
+          <i data-lucide="check" style="width: 32px; height: 32px;"></i>
+        </div>
+        <h2 class="text-2xl font-bold mb-sm">Import Complete!</h2>
+        <p class="text-muted mb-lg">Successfully added <span id="success-count" class="text-success font-bold">0</span> new transactions to your wallet.</p>
+        
+        <div class="flex-center gap-md">
+          <a href="{{ url_for('transactions.index') }}" class="btn btn-primary">View Transactions</a>
+          <button class="btn btn-secondary" onclick="resetFlow()">Upload Another</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right Sidebar -->
+  <div class="flex flex-col gap-lg">
+    
+    <div class="card card-gradient">
+      <div class="card-header">
+        <div class="card-title">How it works</div>
+      </div>
+      <div class="flex flex-col gap-md text-sm text-muted">
+        <div class="flex gap-sm">
+          <div class="text-primary"><i data-lucide="file-search" style="width: 18px;"></i></div>
+          <div><strong>1. Auto-Extraction:</strong> LedgerBud scans PDFs to extract clean transaction data.</div>
+        </div>
+        <div class="flex gap-sm">
+          <div class="text-primary"><i data-lucide="zap" style="width: 18px;"></i></div>
+          <div><strong>2. Smart Categorization:</strong> Using our Merchant Dictionary, transactions are automatically categorized.</div>
+        </div>
+        <div class="flex gap-sm">
+          <div class="text-primary"><i data-lucide="shield" style="width: 18px;"></i></div>
+          <div><strong>3. Deduplication:</strong> We automatically ignore transactions you've already imported.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Recent Activity</div>
+        <a href="{{ url_for('ingestion.history') }}" class="btn btn-ghost btn-sm">History</a>
+      </div>
+      <div class="flex flex-col gap-sm">
+        {% for job in recent_jobs[:4] %}
+        <div class="flex-between p-sm rounded-lg" style="background: var(--bg-elevated);">
+          <div>
+            <div class="text-xs font-bold">{{ job.wallet.name }}</div>
+            <div class="text-xs text-muted">{{ job.created_at.strftime('%b %d, %H:%M') }}</div>
+          </div>
+          {% if job.status == 'completed' %}
+          <div class="badge badge-success" style="background: var(--success-glow); color: var(--success);">
+            +{{ job.imported_count }} Txns
+          </div>
+          {% elif job.status == 'failed' %}
+          <div class="badge badge-danger">Failed</div>
+          {% else %}
+          <div class="badge badge-warning">Pending</div>
+          {% endif %}
+        </div>
+        {% else %}
+        <div class="text-center text-xs text-muted p-md">No recent imports.</div>
+        {% endfor %}
+      </div>
+    </div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentJobId = null;
+
+// Drag and drop setup
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const uploadBtn = document.getElementById('upload-btn');
+const selectedInfo = document.getElementById('file-selected-info');
+const filenameDisplay = document.getElementById('selected-filename');
+
+['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+  dropZone.addEventListener(eventName, preventDefaults, false);
+});
+function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+
+['dragenter', 'dragover'].forEach(eventName => {
+  dropZone.addEventListener(eventName, () => dropZone.classList.add('drag-over'), false);
+});
+['dragleave', 'drop'].forEach(eventName => {
+  dropZone.addEventListener(eventName, () => dropZone.classList.remove('drag-over'), false);
+});
+
+dropZone.addEventListener('drop', function(e) {
+  let dt = e.dataTransfer;
+  let files = dt.files;
+  if(files.length > 0) handleFile(files[0]);
+});
+
+fileInput.addEventListener('change', function(e) {
+  if(this.files.length > 0) handleFile(this.files[0]);
+});
+
+function handleFile(file) {
+  // Check extension
+  const ext = file.name.split('.').pop().toLowerCase();
+  if(!['pdf', 'csv', 'xlsx', 'xls'].includes(ext)) {
+    showToast('Invalid file type. Please upload PDF, CSV, or Excel.', 'error');
+    return;
+  }
+  
+  // Create a new FileList object for the input (workaround for setting input.files)
+  const dataTransfer = new DataTransfer();
+  dataTransfer.items.add(file);
+  fileInput.files = dataTransfer.files;
+  
+  filenameDisplay.textContent = file.name;
+  dropZone.classList.add('hidden');
+  selectedInfo.classList.remove('hidden');
+  checkFormReady();
+}
+
+function clearFile() {
+  fileInput.value = '';
+  dropZone.classList.remove('hidden');
+  selectedInfo.classList.add('hidden');
+  checkFormReady();
+}
+
+document.getElementById('wallet-select').addEventListener('change', checkFormReady);
+
+function checkFormReady() {
+  const hasFile = fileInput.files.length > 0;
+  const hasWallet = document.getElementById('wallet-select').value !== '';
+  uploadBtn.disabled = !(hasFile && hasWallet);
+}
+
+// Upload Submission (AJAX)
+document.getElementById('upload-form').addEventListener('submit', function(e) {
+  e.preventDefault();
+  if(!fileInput.files.length) return;
+
+  const formData = new FormData(this);
+  
+  // UI Loading state
+  this.classList.add('hidden');
+  document.getElementById('processing-state').classList.remove('hidden');
+
+  fetch('{{ url_for("ingestion.upload") }}', {
+    method: 'POST',
+    body: formData
+  })
+  .then(res => res.json())
+  .then(data => {
+    document.getElementById('processing-state').classList.add('hidden');
+    
+    if(data.success) {
+      currentJobId = data.import_job_id;
+      showPreview(data);
+    } else {
+      showToast(data.error || 'Extraction failed', 'error');
+      this.classList.remove('hidden'); // Show form again
+    }
+  })
+  .catch(err => {
+    document.getElementById('processing-state').classList.add('hidden');
+    showToast('Network error occurred', 'error');
+    this.classList.remove('hidden');
+  });
+});
+
+function showPreview(data) {
+  document.getElementById('step-upload').classList.add('hidden');
+  document.getElementById('step-preview').classList.remove('hidden');
+  
+  document.getElementById('preview-inst').textContent = data.institution || 'Unknown Bank';
+  
+  let periodStr = 'Unknown';
+  if(data.period_start && data.period_end) {
+    periodStr = `${formatPreviewDate(data.period_start)} to ${formatPreviewDate(data.period_end)}`;
+  } else if (data.period_start) {
+    periodStr = `From ${formatPreviewDate(data.period_start)}`;
+  }
+  document.getElementById('preview-period').textContent = periodStr;
+  
+  document.getElementById('preview-count').textContent = data.unique_count;
+  document.getElementById('preview-dupes').textContent = `(${data.duplicate_count} dupes ignored)`;
+  
+  // Render sample rows
+  const tbody = document.getElementById('preview-table-body');
+  tbody.innerHTML = '';
+  
+  if(data.preview && data.preview.sample_transactions) {
+    const samples = data.preview.sample_transactions.slice(0, 5);
+    samples.forEach(txn => {
+      const typeClass = txn.type === 'credit' ? 'text-success' : 'text-danger';
+      const sign = txn.type === 'credit' ? '+' : '-';
+      const row = `
+        <tr>
+          <td>${formatPreviewDate(txn.date)}</td>
+          <td>
+            <div class="font-medium">${txn.merchant || 'Unknown'}</div>
+            <div class="text-xs text-muted" title="${txn.description}">${txn.description.substring(0,40)}...</div>
+          </td>
+          <td style="text-align: right;" class="font-bold ${typeClass}">${sign}₹${parseFloat(txn.amount).toLocaleString('en-IN')}</td>
+        </tr>
+      `;
+      tbody.innerHTML += row;
+    });
+    
+    if(data.unique_count > 5) {
+      tbody.innerHTML += `
+        <tr>
+          <td colspan="3" class="text-center text-xs text-muted" style="padding: 8px;">
+            ... and ${data.unique_count - 5} more transactions
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
+
+function commitImport() {
+  if(!currentJobId) return;
+  
+  const btn = document.getElementById('commit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border-width:2px;border-top-color:white;margin-right:8px;"></div> Importing...';
+  
+  fetch(`/ingestion/commit/${currentJobId}`, {
+    method: 'POST'
+  })
+  .then(res => res.json())
+  .then(data => {
+    if(data.success) {
+      document.getElementById('step-preview').classList.add('hidden');
+      document.getElementById('step-success').classList.remove('hidden');
+      document.getElementById('success-count').textContent = data.imported_count;
+    } else {
+      showToast(data.error || 'Import failed', 'error');
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="check-circle"></i> Import Transactions';
+      lucide.createIcons();
+    }
+  })
+  .catch(err => {
+    showToast('Network error', 'error');
+    btn.disabled = false;
+    btn.innerHTML = '<i data-lucide="check-circle"></i> Import Transactions';
+    lucide.createIcons();
+  });
+}
+
+function resetFlow() {
+  currentJobId = null;
+  clearFile();
+  document.getElementById('upload-form').reset();
+  
+  document.getElementById('step-preview').classList.add('hidden');
+  document.getElementById('step-success').classList.add('hidden');
+  document.getElementById('step-upload').classList.remove('hidden');
+  document.getElementById('upload-form').classList.remove('hidden');
+}
+
+function formatPreviewDate(dateStr) {
+  if(!dateStr) return '';
+  const d = new Date(dateStr);
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+</script>
+{% endblock %}

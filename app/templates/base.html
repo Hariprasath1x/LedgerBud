@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="LedgerBud — Your AI-powered Personal Finance Intelligence Platform. Track expenses, manage budgets, and gain financial insights.">
+  <title>{% block title %}LedgerBud{% endblock %} — Financial Intelligence</title>
+
+  <!-- Preconnect for fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+  <!-- Design System -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+
+  <!-- Lucide Icons (CDN) -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+
+  {% block head %}{% endblock %}
+</head>
+<body>
+<div class="app-layout">
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">LedgerBud</div>
+        <div class="logo-tag">Finance Intelligence</div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Overview</div>
+
+      <a href="{{ url_for('dashboard.index') }}" class="nav-item {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+        <i data-lucide="layout-dashboard"></i>
+        <span>Dashboard</span>
+      </a>
+
+      <a href="{{ url_for('analytics.index') }}" class="nav-item {% if request.blueprint == 'analytics' %}active{% endif %}">
+        <i data-lucide="bar-chart-2"></i>
+        <span>Analytics</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top: var(--space-md)">Money</div>
+
+      <a href="{{ url_for('transactions.index') }}" class="nav-item {% if request.blueprint == 'transactions' %}active{% endif %}">
+        <i data-lucide="arrow-left-right"></i>
+        <span>Transactions</span>
+      </a>
+
+      <a href="{{ url_for('wallets.index') }}" class="nav-item {% if request.blueprint == 'wallets' %}active{% endif %}">
+        <i data-lucide="wallet"></i>
+        <span>Wallets</span>
+      </a>
+
+      <a href="{{ url_for('budgets.index') }}" class="nav-item {% if request.blueprint == 'budgets' %}active{% endif %}">
+        <i data-lucide="sliders"></i>
+        <span>Budgets</span>
+      </a>
+
+      <a href="{{ url_for('goals.index') }}" class="nav-item {% if request.blueprint == 'goals' %}active{% endif %}">
+        <i data-lucide="target"></i>
+        <span>Goals</span>
+      </a>
+
+      <div class="nav-section-label" style="margin-top: var(--space-md)">Import</div>
+
+      <a href="{{ url_for('ingestion.index') }}" class="nav-item {% if request.blueprint == 'ingestion' and request.endpoint != 'ingestion.history' %}active{% endif %}">
+        <i data-lucide="upload-cloud"></i>
+        <span>Import Statement</span>
+        <span class="nav-badge">PDF</span>
+      </a>
+
+      <a href="{{ url_for('ingestion.history') }}" class="nav-item {% if request.endpoint == 'ingestion.history' %}active{% endif %}">
+        <i data-lucide="history"></i>
+        <span>Import History</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="nav-item" style="cursor: default;">
+        <i data-lucide="shield-check" style="color: var(--success)"></i>
+        <div>
+          <div class="text-xs font-bold text-primary">Bank-Grade Security</div>
+          <div class="text-xs text-muted">Data stays on your device</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ===================== MAIN ===================== -->
+  <div class="main-content">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="flex gap-md" style="align-items: center;">
+        <button class="btn-ghost btn-icon" id="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle sidebar">
+          <i data-lucide="menu"></i>
+        </button>
+        <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
+      </div>
+      <div class="topbar-actions">
+        <a href="{{ url_for('ingestion.index') }}" class="btn btn-primary btn-sm" id="import-statement-btn">
+          <i data-lucide="upload"></i>
+          Import Statement
+        </a>
+        <a href="{{ url_for('transactions.add') }}" class="btn btn-secondary btn-sm">
+          <i data-lucide="plus"></i>
+          Add Transaction
+        </a>
+      </div>
+    </header>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div style="padding: var(--space-md) var(--space-xl) 0;">
+          {% for category, message in messages %}
+            <div class="toast {{ 'success' if category == 'success' else 'error' if category == 'error' else 'warning' }}"
+                 style="position: relative; margin-bottom: var(--space-sm);">
+              <i data-lucide="{{ 'check-circle' if category == 'success' else 'alert-circle' }}"
+                 style="color: {{ 'var(--success)' if category == 'success' else 'var(--danger)' }};width:18px;height:18px;"></i>
+              <span>{{ message }}</span>
+              <button onclick="this.parentElement.remove()" style="margin-left: auto; color: var(--text-muted);">
+                <i data-lucide="x" style="width:14px;height:14px;"></i>
+              </button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Page Content -->
+    <main class="page-wrapper animate-fade-in">
+      {% block content %}{% endblock %}
+    </main>
+
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Core JS -->
+<script>
+  // Initialize Lucide icons
+  lucide.createIcons();
+
+  // Sidebar toggle
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+  }
+
+  // Toast notifications
+  function showToast(message, type = 'success', duration = 4000) {
+    const container = document.getElementById('toast-container');
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    const icons = { success: 'check-circle', error: 'alert-circle', warning: 'alert-triangle' };
+    const colors = { success: 'var(--success)', error: 'var(--danger)', warning: 'var(--warning)' };
+    toast.innerHTML = `
+      <i data-lucide="${icons[type] || 'info'}" style="width:18px;height:18px;stroke:${colors[type]};flex-shrink:0;"></i>
+      <span style="flex:1;">${message}</span>
+      <button onclick="this.parentElement.remove()" style="color:var(--text-muted);">
+        <i data-lucide="x" style="width:14px;height:14px;"></i>
+      </button>
+    `;
+    container.appendChild(toast);
+    lucide.createIcons({ nodes: [toast] });
+    setTimeout(() => toast.remove(), duration);
+  }
+
+  // Format currency
+  function formatCurrency(amount, currency = 'INR') {
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency', currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(amount);
+  }
+
+  // Format number
+  function formatNumber(n) {
+    return new Intl.NumberFormat('en-IN').format(n);
+  }
+
+  // Modal helpers
+  function openModal(id) {
+    document.getElementById(id).classList.add('active');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  // Close modal on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) closeModal(overlay.id);
+    });
+  });
+
+  // Chart.js default config
+  Chart.defaults.color = '#9ba3c2';
+  Chart.defaults.borderColor = '#232840';
+  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.font.size = 12;
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
