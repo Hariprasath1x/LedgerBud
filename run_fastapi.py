@@ -1,6 +1,10 @@
 """Run the FastAPI LedgerBud backend with Uvicorn."""
 
 import uvicorn
+from dotenv import load_dotenv
+
+# Load .env into os.environ before anything else starts
+load_dotenv()
 
 
 if __name__ == "__main__":

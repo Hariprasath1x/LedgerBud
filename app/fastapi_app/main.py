@@ -1,5 +1,8 @@
 """FastAPI application factory and ASGI app instance."""
 
+from dotenv import load_dotenv
+load_dotenv()  # Must be first — loads .env into os.environ for all worker processes
+
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI

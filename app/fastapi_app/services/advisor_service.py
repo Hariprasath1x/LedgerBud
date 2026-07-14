@@ -50,8 +50,13 @@ User Question:
 {payload.question}
 """
 
-        api_key = getattr(settings, "groq_api_key", os.environ.get("GROQ_API_KEY", ""))
-        
+        # Always read fresh from environment first, fall back to cached settings
+        # This avoids the lru_cache issue where settings were cached without the key
+        api_key = (
+            os.environ.get("GROQ_API_KEY", "").strip()
+            or getattr(settings, "groq_api_key", "")
+        )
+
         if not api_key:
             return AdvisorResponse(
                 answer="The Groq API key is not configured. Please add GROQ_API_KEY to your environment variables to enable the AI advisor.",
