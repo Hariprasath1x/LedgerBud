@@ -5,7 +5,7 @@
 
 {% block content %}
 <!-- Tab Navigation -->
-<div class="flex gap-md mb-xl" style="border-bottom: 1px solid var(--border);">
+<div class="flex gap-md mb-xl" style="border-bottom: 1px solid rgba(221, 212, 200, 0.95);">
   <button class="btn btn-ghost active" style="border-bottom: 2px solid var(--primary); border-radius: 0; padding-bottom: 12px; font-weight: 700; color: var(--text-primary);" onclick="switchTab('insights')">Insights & Advice</button>
   <button class="btn btn-ghost" style="border-bottom: 2px solid transparent; border-radius: 0; padding-bottom: 12px; font-weight: 700;" onclick="switchTab('subscriptions')">Subscriptions</button>
   <button class="btn btn-ghost" style="border-bottom: 2px solid transparent; border-radius: 0; padding-bottom: 12px; font-weight: 700;" onclick="switchTab('simulator')">What-If Simulator</button>
@@ -20,7 +20,7 @@
       <div class="card card-gradient">
         <div class="flex-between mb-lg">
           <div class="flex-center gap-sm">
-            <div class="p-sm rounded-lg" style="background: var(--primary-glow); color: var(--primary);">
+            <div class="p-sm rounded-lg" style="background: rgba(47, 93, 98, 0.08); color: var(--primary);">
               <i data-lucide="bot" style="width: 24px; height: 24px;"></i>
             </div>
             <div>
@@ -32,19 +32,19 @@
         
         <div class="flex flex-col gap-md">
           {% for a in advice %}
-          <div class="p-lg rounded-lg" style="background: var(--bg-surface); border: 1px solid var(--border); position: relative; overflow: hidden;">
+          <div class="p-lg rounded-lg" style="background: var(--bg-surface); border: 1px solid rgba(221, 212, 200, 0.95); position: relative; overflow: hidden;">
             {% if a.priority == 'high' %}
             <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--warning);"></div>
             {% endif %}
             
             <div class="flex gap-md">
-              <div class="p-sm rounded" style="background: var(--bg-elevated); color: var(--text-primary); align-self: flex-start;">
+              <div class="p-sm rounded" style="background: rgba(47, 93, 98, 0.06); color: var(--text-primary); align-self: flex-start;">
                 <i data-lucide="{{ a.icon }}"></i>
               </div>
               <div style="flex: 1;">
                 <div class="flex-between mb-xs">
                   <div class="font-bold">{{ a.title }}</div>
-                  <span class="badge" style="background: var(--bg-elevated);">{{ a.category }}</span>
+                  <span class="badge" style="background: rgba(47, 93, 98, 0.08); color: var(--primary);">{{ a.category }}</span>
                 </div>
                 <div class="text-sm text-secondary mb-md">{{ a.message }}</div>
                 <button class="btn btn-ghost btn-sm" style="padding: 0; color: var(--primary);">
@@ -74,6 +74,29 @@
 
     <!-- Right Sidebar -->
     <div class="flex flex-col gap-lg">
+
+      <!-- Net Worth -->
+      <div class="card card-gradient">
+        <div class="card-header">
+          <div class="card-title">Net Worth</div>
+          <div class="badge badge-primary">Live</div>
+        </div>
+        <div class="flex flex-col gap-sm">
+          <div class="flex-between">
+            <span class="text-sm text-muted">Assets</span>
+            <span class="font-bold">₹{{ '{:,.0f}'.format(net_worth.total_assets) }}</span>
+          </div>
+          <div class="flex-between">
+            <span class="text-sm text-muted">Liabilities</span>
+            <span class="font-bold text-danger">₹{{ '{:,.0f}'.format(net_worth.total_liabilities) }}</span>
+          </div>
+          <div class="divider"></div>
+          <div class="flex-between">
+            <span class="text-sm text-muted">Net Worth</span>
+            <span class="text-xl font-black text-success">₹{{ '{:,.0f}'.format(net_worth.net_worth) }}</span>
+          </div>
+        </div>
+      </div>
       
       <!-- Top Merchants -->
       <div class="card">
@@ -100,6 +123,36 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- Advisor Chat -->
+<div class="card mt-xl">
+  <div class="card-header">
+    <div class="card-title flex-center gap-xs">
+      <i data-lucide="message-circle" style="width: 16px;"></i> Groq Advisor
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="resetAdvisorChat()">Reset</button>
+  </div>
+  <div class="grid-2">
+    <div class="flex flex-col gap-sm" id="advisor-thread" style="max-height: 340px; overflow:auto; padding-right: .25rem;">
+      {% for message in advisor_messages %}
+      <div class="p-md rounded-lg" style="background: {{ 'rgba(47, 93, 98, 0.08)' if message.role == 'assistant' else 'rgba(255,255,255,0.8)' }}; border: 1px solid rgba(221, 212, 200, 0.8);">
+        <div class="text-xs text-muted mb-xs">{{ message.role|title }}</div>
+        <div class="text-sm">{{ message.content }}</div>
+      </div>
+      {% else %}
+      <div class="text-sm text-muted p-md">Ask a question like "How can I save more?" or "Which category should I reduce?"</div>
+      {% endfor %}
+    </div>
+    <div class="flex flex-col gap-md">
+      <div class="form-group">
+        <label class="form-label">Ask your advisor</label>
+        <textarea id="advisor-question" class="form-control" rows="5" placeholder="How can I save more based on my current spending?"></textarea>
+      </div>
+      <button class="btn btn-primary" onclick="askAdvisor()">Get Advice</button>
+      <div class="text-xs text-muted">The advisor uses your summarized spending, goals, net worth, and health score. It does not send raw transaction rows.</div>
     </div>
   </div>
 </div>
@@ -157,7 +210,7 @@
       
       <div class="flex flex-col gap-sm">
         {% for d in sub_detected %}
-        <div class="flex-between p-md rounded" style="background: var(--bg-surface);">
+        <div class="flex-between p-md rounded" style="background: var(--bg-surface); border: 1px solid rgba(221, 212, 200, 0.6);">
           <div>
             <div class="font-bold">{{ d.name }}</div>
             <div class="text-xs text-muted">{{ d.occurrences }} payments found • {{ d.frequency|title }}</div>
@@ -187,7 +240,7 @@
     </div>
 
     <div class="grid-2 mb-xl">
-      <div class="p-lg rounded-lg" style="background: var(--bg-elevated);">
+      <div class="p-lg rounded-lg" style="background: rgba(255, 255, 255, 0.75);">
         <label class="form-label mb-sm block">Reduce Monthly Spending By:</label>
         <div class="flex gap-md" style="align-items: center;">
           <input type="range" id="sim-slider" min="0" max="20000" step="500" value="2000" class="w-full" oninput="updateSimulator(this.value)">
@@ -195,15 +248,15 @@
         </div>
       </div>
       
-      <div class="p-lg rounded-lg flex-center flex-col" style="background: var(--success-glow); border: 1px solid rgba(0,212,168,0.2);">
+      <div class="p-lg rounded-lg flex-center flex-col" style="background: rgba(47, 125, 87, 0.08); border: 1px solid rgba(47,125,87,0.18);">
         <div class="text-sm font-bold text-success uppercase">Extra Yearly Savings</div>
         <div class="text-3xl font-black text-success mt-xs" id="sim-yearly">₹24,000</div>
       </div>
     </div>
 
-    <div class="p-xl rounded-lg text-center" style="background: linear-gradient(135deg, var(--bg-surface), var(--bg-elevated)); border: 1px solid var(--border);">
+    <div class="p-xl rounded-lg text-center" style="background: linear-gradient(135deg, #fffdf8, #f6f0e7); border: 1px solid rgba(221, 212, 200, 0.95);">
       <div class="text-sm text-muted mb-sm">If invested monthly at 12% p.a., in 10 years this extra saving grows to:</div>
-      <div class="text-4xl font-black text-primary-brand" id="sim-10yr" style="text-shadow: 0 0 20px rgba(108,99,255,0.3);">₹4,60,000</div>
+      <div class="text-4xl font-black text-primary-brand" id="sim-10yr">₹4,60,000</div>
     </div>
   </div>
 </div>
@@ -273,8 +326,8 @@ document.addEventListener("DOMContentLoaded", function() {
               {
                 label: 'Savings',
                 data: data.map(d => d.savings),
-                borderColor: '#6c63ff',
-                backgroundColor: 'rgba(108, 99, 255, 0.1)',
+                borderColor: '#2f5d62',
+                backgroundColor: 'rgba(47, 93, 98, 0.10)',
                 borderWidth: 2,
                 fill: true,
                 tension: 0.4
@@ -287,7 +340,7 @@ document.addEventListener("DOMContentLoaded", function() {
             scales: {
               y: {
                 beginAtZero: true,
-                grid: { color: 'rgba(35, 40, 64, 0.5)' }
+                grid: { color: 'rgba(221, 212, 200, 0.9)' }
               },
               x: { grid: { display: false } }
             }
@@ -296,5 +349,50 @@ document.addEventListener("DOMContentLoaded", function() {
       }
     });
 });
+
+function appendAdvisorMessage(role, content) {
+  const thread = document.getElementById('advisor-thread');
+  const message = document.createElement('div');
+  message.className = 'p-md rounded-lg';
+  message.style.background = role === 'assistant' ? 'rgba(47, 93, 98, 0.08)' : 'rgba(255,255,255,0.8)';
+  message.style.border = '1px solid rgba(221, 212, 200, 0.8)';
+  message.innerHTML = `<div class="text-xs text-muted mb-xs">${role.charAt(0).toUpperCase() + role.slice(1)}</div><div class="text-sm"></div>`;
+  message.querySelector('.text-sm').textContent = content;
+  thread.appendChild(message);
+  thread.scrollTop = thread.scrollHeight;
+}
+
+function askAdvisor() {
+  const input = document.getElementById('advisor-question');
+  const question = input.value.trim();
+  if (!question) {
+    showToast('Type a question first', 'warning');
+    return;
+  }
+  appendAdvisorMessage('user', question);
+  input.value = '';
+
+  fetch('/analytics/api/advisor/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        appendAdvisorMessage('assistant', data.answer);
+      } else {
+        showToast(data.error || 'Advisor failed', 'error');
+      }
+    })
+    .catch(() => showToast('Advisor request failed', 'error'));
+}
+
+function resetAdvisorChat() {
+  fetch('/analytics/api/advisor/reset', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  }).finally(() => window.location.reload());
+}
 </script>
 {% endblock %}

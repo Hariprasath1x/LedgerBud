@@ -112,7 +112,7 @@
             <tr>
               <td colspan="4" style="text-align: center; padding: var(--space-xl);">
                 <div class="text-muted">No recent transactions</div>
-                <a href="{{ url_for('ingestion.index') }}" class="btn btn-primary mt-md">Import Statement</a>
+                <a href="#" class="btn btn-primary mt-md" onclick="showToast('Statement import is disabled in this session.', 'warning'); return false;">Import Statement</a>
               </td>
             </tr>
             {% endfor %}
@@ -135,7 +135,7 @@
         <div class="health-ring-container">
           <div class="health-ring">
             <svg viewBox="0 0 36 36">
-              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--bg-elevated)" stroke-width="3" />
+              <path class="ring-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(221, 212, 200, 0.9)" stroke-width="3" />
               <path class="ring-fill" stroke-dasharray="{{ health.score }}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="var(--primary)" stroke-width="3" stroke-linecap="round" />
             </svg>
             <div class="health-ring-value">
@@ -229,16 +229,16 @@ document.addEventListener("DOMContentLoaded", function() {
           {
             label: 'Income',
             data: incomeData,
-            backgroundColor: 'rgba(0, 212, 168, 0.2)',
-            borderColor: '#00d4a8',
+            backgroundColor: 'rgba(47, 125, 87, 0.16)',
+            borderColor: '#2f7d57',
             borderWidth: 1,
             borderRadius: 4
           },
           {
             label: 'Expenses',
             data: expenseData,
-            backgroundColor: 'rgba(255, 71, 87, 0.2)',
-            borderColor: '#ff4757',
+            backgroundColor: 'rgba(177, 75, 75, 0.16)',
+            borderColor: '#b14b4b',
             borderWidth: 1,
             borderRadius: 4
           }
@@ -254,7 +254,7 @@ document.addEventListener("DOMContentLoaded", function() {
         scales: {
           y: {
             beginAtZero: true,
-            grid: { color: 'rgba(35, 40, 64, 0.5)' },
+            grid: { color: 'rgba(221, 212, 200, 0.9)' },
             ticks: {
               callback: function(value) {
                 if(value >= 100000) return '₹' + (value/100000).toFixed(1) + 'L';

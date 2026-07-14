@@ -1,15 +1,18 @@
 """
 Analytics Routes
 """
-from flask import Blueprint, render_template, jsonify, request
+from flask import Blueprint, render_template, jsonify, request, session
 from datetime import date
 from app.intelligence import (
     get_monthly_summary, get_category_breakdown, get_monthly_trends,
     generate_insights, calculate_health_score, detect_subscriptions,
-    generate_advice
+    generate_advice, get_net_worth_summary, get_conversation_messages,
+    get_or_create_conversation, generate_chat_response, store_conversation_message,
+    clear_conversation,
 )
 from app.intelligence.spending_insights import get_top_merchants
 from app.models import Subscription
+import uuid
 
 analytics_bp = Blueprint('analytics', __name__, url_prefix='/analytics')
 
@@ -26,6 +29,14 @@ def index():
     top_merchants = get_top_merchants(10)
     insights = generate_insights(year, month)
     advice = generate_advice()
+    net_worth = get_net_worth_summary()
+
+    session_id = session.get('advisor_session_id')
+    if not session_id:
+        session_id = uuid.uuid4().hex
+        session['advisor_session_id'] = session_id
+    get_or_create_conversation(session_id)
+    advisor_messages = get_conversation_messages(session_id)
 
     # Subscriptions
     subscriptions = Subscription.query.filter_by(is_active=True).all()
@@ -40,6 +51,8 @@ def index():
         top_merchants=top_merchants,
         insights=insights,
         advice=advice,
+        net_worth=net_worth,
+        advisor_messages=advisor_messages,
         subscriptions=subscriptions,
         sub_detected=sub_detected,
         current_month=today.strftime('%B %Y'),
@@ -96,3 +109,39 @@ def api_whatif():
         'investment_value_10yr': round(investment_value, 0),
         'reduction': reduce_by,
     })
+
+
+@analytics_bp.route('/api/advisor/chat', methods=['POST'])
+def api_advisor_chat():
+    data = request.get_json(force=True, silent=True) or {}
+    question = (data.get('question') or '').strip()
+    if not question:
+        return jsonify({'success': False, 'error': 'Question is required'}), 400
+
+    session_id = session.get('advisor_session_id')
+    if not session_id:
+        session_id = uuid.uuid4().hex
+        session['advisor_session_id'] = session_id
+
+    history = get_conversation_messages(session_id)
+    store_conversation_message(session_id, 'user', question)
+    result = generate_chat_response(question, history)
+    assistant_message = store_conversation_message(session_id, 'assistant', result['answer'])
+
+    return jsonify({
+        'success': True,
+        'provider': result['provider'],
+        'answer': result['answer'],
+        'assistant_message': assistant_message,
+        'history': get_conversation_messages(session_id),
+        'context': result['context'],
+    })
+
+
+@analytics_bp.route('/api/advisor/reset', methods=['POST'])
+def api_advisor_reset():
+    session_id = session.get('advisor_session_id')
+    if session_id:
+        clear_conversation(session_id)
+    session.pop('advisor_session_id', None)
+    return jsonify({'success': True})

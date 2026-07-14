@@ -63,10 +63,16 @@
         <div class="form-group">
           <label class="form-label">Category</label>
           <select name="category_id" class="form-control" required>
+            {% if not categories %}
+            <option value="">No expense categories available</option>
+            {% endif %}
             {% for c in categories %}
             <option value="{{ c.id }}" {% if data.budget.category_id == c.id %}selected{% endif %}>{{ c.name }}</option>
             {% endfor %}
           </select>
+          {% if not categories %}
+          <div class="text-xs text-warning">Seed categories first so budgets can be linked to a spending bucket.</div>
+          {% endif %}
         </div>
         <div class="form-group">
           <label class="form-label">Amount Limit (₹)</label>
@@ -103,10 +109,16 @@
       <div class="form-group">
         <label class="form-label">Category</label>
         <select name="category_id" class="form-control" required>
+            {% if not categories %}
+            <option value="">No expense categories available</option>
+            {% endif %}
           {% for c in categories %}
           <option value="{{ c.id }}">{{ c.name }}</option>
           {% endfor %}
         </select>
+          {% if not categories %}
+          <div class="text-xs text-warning">Seed categories first so budgets can be linked to a spending bucket.</div>
+          {% endif %}
       </div>
       <div class="grid-2">
         <div class="form-group">
@@ -121,7 +133,7 @@
           </select>
         </div>
       </div>
-      <button type="submit" class="btn btn-primary w-full mt-md">Create Budget</button>
+      <button type="submit" class="btn btn-primary w-full mt-md" {% if not categories %}disabled{% endif %}>Create Budget</button>
     </form>
   </div>
 </div>

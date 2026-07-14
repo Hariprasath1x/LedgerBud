@@ -1,0 +1,1 @@
+"""LedgerBud UI pages package."""

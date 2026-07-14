@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="LedgerBud — Your AI-powered Personal Finance Intelligence Platform. Track expenses, manage budgets, and gain financial insights.">
+  <meta name="description" content="LedgerBud — a personal finance intelligence platform for wallets, transactions, goals, and clear financial analysis.">
   <title>{% block title %}LedgerBud{% endblock %} — Financial Intelligence</title>
 
   <!-- Preconnect for fonts -->
@@ -77,13 +77,13 @@
 
       <div class="nav-section-label" style="margin-top: var(--space-md)">Import</div>
 
-      <a href="{{ url_for('ingestion.index') }}" class="nav-item {% if request.blueprint == 'ingestion' and request.endpoint != 'ingestion.history' %}active{% endif %}">
+      <a href="#" class="nav-item" onclick="showToast('Statement import is disabled in this lightweight UI session.', 'warning'); return false;">
         <i data-lucide="upload-cloud"></i>
         <span>Import Statement</span>
         <span class="nav-badge">PDF</span>
       </a>
 
-      <a href="{{ url_for('ingestion.history') }}" class="nav-item {% if request.endpoint == 'ingestion.history' %}active{% endif %}">
+      <a href="#" class="nav-item" onclick="showToast('Import history is unavailable until the ingestion module is loaded.', 'warning'); return false;">
         <i data-lucide="history"></i>
         <span>Import History</span>
       </a>
@@ -112,7 +112,7 @@
         <h1 class="topbar-title">{% block page_title %}Dashboard{% endblock %}</h1>
       </div>
       <div class="topbar-actions">
-        <a href="{{ url_for('ingestion.index') }}" class="btn btn-primary btn-sm" id="import-statement-btn">
+        <a href="#" class="btn btn-primary btn-sm" id="import-statement-btn" onclick="showToast('Statement import is disabled in this session.', 'warning'); return false;">
           <i data-lucide="upload"></i>
           Import Statement
         </a>
@@ -214,9 +214,9 @@
   });
 
   // Chart.js default config
-  Chart.defaults.color = '#9ba3c2';
-  Chart.defaults.borderColor = '#232840';
-  Chart.defaults.font.family = "'Inter', sans-serif";
+  Chart.defaults.color = '#5c544b';
+  Chart.defaults.borderColor = '#ddd4c8';
+  Chart.defaults.font.family = "'Manrope', sans-serif";
   Chart.defaults.font.size = 12;
 </script>
 

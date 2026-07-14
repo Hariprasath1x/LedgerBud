@@ -1,0 +1,1 @@
+"""LedgerBud FastAPI application package."""

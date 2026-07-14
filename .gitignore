@@ -1,10 +1,36 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+.venv/
 venv/
 env/
+
+# Environment variables
 .env
+
+# Uploads
 app/static/uploads/
+
+# IDE
 .vscode/
 .idea/
+
+# Databases
 *.sqlite3
+*.db
+instance/
+
+# Test & type-check cache
+.pytest_cache/
+.mypy_cache/
+
+# macOS
 .DS_Store
+
+# Pyright / Pylance output
+pyrightconfig.json

@@ -6,6 +6,7 @@ from app.models.budget import Budget
 from app.models.goal import Goal
 from app.models.import_job import ImportJob
 from app.models.subscription import Subscription, AuditLog
+from app.models.advisor import AdvisorConversation, AdvisorMessage
 
 __all__ = [
     'Category',
@@ -17,4 +18,6 @@ __all__ = [
     'ImportJob',
     'Subscription',
     'AuditLog',
+    'AdvisorConversation',
+    'AdvisorMessage',
 ]

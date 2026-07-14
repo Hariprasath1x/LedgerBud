@@ -2,6 +2,15 @@ Flask==3.0.3
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.7
 Flask-APScheduler==1.13.1
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.4
+pydantic-settings==2.6.1
+PyJWT==2.10.1
+bcrypt==4.2.1
+email-validator==2.2.0
+python-multipart==0.0.20
+pymysql==1.1.1
 psycopg2-binary==2.9.9
 pdfplumber==0.11.4
 pandas==2.2.2
@@ -15,3 +24,8 @@ fuzzywuzzy==0.18.0
 python-Levenshtein==0.25.1
 Pillow==10.4.0
 pytz==2024.2
+streamlit>=1.35.0
+plotly>=5.22.0
+httpx>=0.27.0
+groq>=0.9.0
+firebase-admin>=6.5.0

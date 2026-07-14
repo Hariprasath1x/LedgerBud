@@ -75,7 +75,7 @@
           <td colspan="6" class="text-center p-xl text-muted">
             <i data-lucide="history" style="width: 48px; height: 48px; margin: 0 auto; opacity: 0.5;"></i>
             <div class="mt-md">No import history available.</div>
-            <a href="{{ url_for('ingestion.index') }}" class="btn btn-primary mt-sm">Import your first statement</a>
+            <a href="#" class="btn btn-primary mt-sm" onclick="showToast('Statement import is disabled in this session.', 'warning'); return false;">Import your first statement</a>
           </td>
         </tr>
         {% endfor %}
