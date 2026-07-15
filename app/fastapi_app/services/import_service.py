@@ -14,20 +14,18 @@ from app.fastapi_app.models.import_job import ImportJob
 from app.fastapi_app.models.transaction import Transaction
 from app.fastapi_app.schemas.import_job import ImportCommitResponse, ImportJobRead, ImportPreviewResponse, ImportPreviewTransaction
 
+from app.etl.extractor import PDFExtractor, CSVExtractor, XLSXExtractor
+from app.etl.transformer.normalizer import parse_date, parse_amount, clean_description, determine_transaction_type
+from app.etl.transformer.deduplicator import detect_duplicates, NormalizedTransaction
+from app.etl.transformer.merchant_resolver import resolve_merchant
+from app.fastapi_app.models.wallet import Wallet
+
 
 ALLOWED_EXTENSIONS = {"pdf", "csv", "xlsx", "xls"}
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "app/static/uploads")
 
 
-_flask_app = None
 
-
-def get_flask_app():
-    global _flask_app
-    if _flask_app is None:
-        from app import create_app
-        _flask_app = create_app()
-    return _flask_app
 
 
 class ImportService:
@@ -91,7 +89,7 @@ class ImportService:
             raise
 
         # Store preview data on the job
-        preview_txns = result.get("preview", {}).get("transactions", [])
+        preview_txns = result.get("preview", {}).get("sample_transactions", [])
         job.status = "preview"
         job.institution_detected = result.get("institution")
         job.statement_period_start = self._parse_date(result.get("period_start"))
@@ -165,31 +163,148 @@ class ImportService:
 
     # --- ETL bridge methods ---
 
+    def _get_extractor(self, file_path: str):
+        for ext in [PDFExtractor(), CSVExtractor(), XLSXExtractor()]:
+            if ext.can_handle(file_path):
+                return ext
+        return None
+
+    def _transform_transaction(self, raw_txn) -> NormalizedTransaction | None:
+        parsed_date = parse_date(raw_txn.date)
+        if not parsed_date:
+            return None
+        txn_type, amount = determine_transaction_type(
+            raw_txn.debit, raw_txn.credit, raw_txn.amount, raw_txn.description
+        )
+        if not amount or amount <= 0:
+            return None
+        description = clean_description(raw_txn.description)
+        balance = parse_amount(raw_txn.balance) if raw_txn.balance else None
+        
+        _, merchant_name = resolve_merchant(description, {})
+        
+        return NormalizedTransaction(
+            date=parsed_date,
+            description=description,
+            amount=amount,
+            type=txn_type,
+            balance_after=balance,
+            reference_no=raw_txn.reference_no,
+            merchant_name_raw=merchant_name or description[:100],
+            raw_date_str=raw_txn.date or '',
+        )
+
+    def _get_existing_fingerprints(self, wallet_id: int) -> list:
+        txns = self.session.scalars(select(Transaction).where(Transaction.wallet_id == wallet_id)).all()
+        return [
+            {'date': t.transaction_date.isoformat(), 'amount': str(t.amount), 'description': t.notes or t.merchant_name}
+            for t in txns
+        ]
+
     def _run_etl_extract(self, file_path: str, job_id: int, wallet_id: int) -> dict:
-        """
-        Delegate to the existing ETL pipeline for extract + transform phases.
-        The pipeline.process() function uses Flask-SQLAlchemy, so we call it
-        as a thin wrapper that returns preview data without committing transactions.
-        """
-        try:
-            flask_app = get_flask_app()
-            with flask_app.app_context():
-                from app.etl import pipeline as etl_pipeline
-                result = etl_pipeline.process(file_path, job_id, wallet_id)
-                return result
-        except Exception as exc:
-            raise RuntimeError(f"ETL extraction failed: {exc}") from exc
+        """Extract and transform without saving."""
+        extractor = self._get_extractor(file_path)
+        if not extractor:
+            raise ValueError(f"No extractor available for file: {file_path}")
+        
+        ext_res = extractor.extract(file_path)
+        if not ext_res.success and not ext_res.transactions:
+            raise RuntimeError("; ".join(ext_res.errors))
+        
+        normalized = []
+        failed = 0
+        for raw in ext_res.transactions:
+            try:
+                norm = self._transform_transaction(raw)
+                if norm:
+                    normalized.append(norm)
+                else:
+                    failed += 1
+            except Exception:
+                failed += 1
+                
+        existing = self._get_existing_fingerprints(wallet_id)
+        unique_txns, dup_txns = detect_duplicates(normalized, existing)
+        
+        meta = ext_res.metadata
+        
+        sample = []
+        for txn in unique_txns[:10]:
+            sample.append({
+                'date': txn.date.isoformat() if txn.date else '',
+                'description': txn.description,
+                'amount': str(txn.amount),
+                'transaction_type': txn.type.capitalize() if txn.type else 'Expense',
+                'merchant_name': txn.merchant_name_raw,
+                'category': None,
+                'is_duplicate': False,
+            })
+            
+        return {
+            'institution': meta.institution,
+            'period_start': meta.statement_period_start.isoformat() if meta.statement_period_start else None,
+            'period_end': meta.statement_period_end.isoformat() if meta.statement_period_end else None,
+            'total_records': len(ext_res.transactions),
+            'unique_count': len(unique_txns),
+            'duplicate_count': len(dup_txns),
+            'failed_count': failed,
+            'preview': {'sample_transactions': sample}
+        }
 
     def _run_etl_commit(self, file_path: str, job_id: int, wallet_id: int, user_id: int) -> dict:
-        """Delegate to ETL commit phase."""
-        try:
-            flask_app = get_flask_app()
-            with flask_app.app_context():
-                from app.etl import pipeline as etl_pipeline
-                result = etl_pipeline.commit(job_id, wallet_id)
-                return result
-        except Exception as exc:
-            raise RuntimeError(f"ETL commit failed: {exc}") from exc
+        """Extract, transform, and load unique transactions to database."""
+        extractor = self._get_extractor(file_path)
+        if not extractor:
+            raise ValueError("No extractor available")
+            
+        ext_res = extractor.extract(file_path)
+        
+        normalized = []
+        for raw in ext_res.transactions:
+            try:
+                norm = self._transform_transaction(raw)
+                if norm:
+                    normalized.append(norm)
+            except Exception:
+                pass
+                
+        existing = self._get_existing_fingerprints(wallet_id)
+        unique_txns, dup_txns = detect_duplicates(normalized, existing)
+        
+        imported_count = 0
+        for norm in unique_txns:
+            try:
+                txn = Transaction(
+                    user_id=user_id,
+                    wallet_id=wallet_id,
+                    merchant_name=norm.merchant_name_raw or norm.description[:100],
+                    category=None,
+                    amount=norm.amount,
+                    transaction_type=norm.type.capitalize() if norm.type else "Expense",
+                    notes=norm.description,
+                    transaction_date=norm.date,
+                    is_transfer=False
+                )
+                self.session.add(txn)
+                imported_count += 1
+            except Exception:
+                pass
+                
+        if unique_txns:
+            wallet = self.session.scalar(select(Wallet).where(Wallet.id == wallet_id))
+            if wallet:
+                last_balance = [t.balance_after for t in unique_txns if t.balance_after]
+                if last_balance:
+                    wallet.balance = last_balance[-1]
+                    self.session.add(wallet)
+                    
+        self.session.flush()
+        
+        return {
+            'imported_count': imported_count,
+            'duplicate_count': len(dup_txns),
+            'total_records': len(ext_res.transactions)
+        }
 
     def _parse_date(self, value: str | None):
         if not value:

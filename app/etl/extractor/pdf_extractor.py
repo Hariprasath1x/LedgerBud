@@ -66,21 +66,43 @@ class PDFExtractor(BaseExtractor):
                     page_text = page.extract_text() or ''
                     raw_text_parts.append(page_text)
 
-                    # Extract tables from this page
-                    tables = page.extract_tables({
-                        'vertical_strategy': 'lines',
-                        'horizontal_strategy': 'lines',
-                        'snap_tolerance': 3,
-                        'join_tolerance': 3,
-                    })
+                    # Extract tables from this page using multiple strategies
+                    strategies = [
+                        {
+                            'vertical_strategy': 'lines',
+                            'horizontal_strategy': 'lines',
+                            'snap_tolerance': 3,
+                            'join_tolerance': 3,
+                        },
+                        {
+                            'vertical_strategy': 'text',
+                            'horizontal_strategy': 'text',
+                        },
+                        {
+                            'vertical_strategy': 'text',
+                            'horizontal_strategy': 'lines',
+                        }
+                    ]
+                    
+                    page_tables = []
+                    for strategy in strategies:
+                        try:
+                            tables = page.extract_tables(strategy)
+                            valid_tables = []
+                            for table in tables:
+                                if not table:
+                                    continue
+                                header_idx, _ = self._find_header_row(table)
+                                if header_idx is not None:
+                                    valid_tables.append(table)
+                            
+                            if valid_tables:
+                                page_tables = valid_tables
+                                break
+                        except Exception:
+                            pass
 
-                    if not tables:
-                        # Try text-based extraction as fallback
-                        tables = page.extract_tables()
-
-                    for table in tables:
-                        if table:
-                            all_tables.append(table)
+                    all_tables.extend(page_tables)
 
                 full_text = '\n'.join(raw_text_parts)
 
@@ -160,12 +182,63 @@ class PDFExtractor(BaseExtractor):
             return []
 
         transactions = []
+        current_txn = None
+
+        def safe_get(r: List, col_key: str) -> str:
+            idx = col_map.get(col_key)
+            if idx is not None and idx < len(r):
+                val = r[idx]
+                return str(val).strip() if val else ''
+            return ''
+
         for row in table[header_row_idx + 1:]:
             if not row:
                 continue
-            txn = self._parse_row(row, col_map)
-            if txn:
-                transactions.append(txn)
+                
+            date_val = safe_get(row, 'date')
+            desc_val = safe_get(row, 'description')
+            
+            # Skip header/total rows
+            skip_keywords = ['total', 'opening balance', 'closing balance', 'brought forward',
+                             'carried forward', 'opening', 'closing']
+            if any(k in desc_val.lower() for k in skip_keywords) and not safe_get(row, 'debit') and not safe_get(row, 'credit'):
+                continue
+
+            is_date = bool(re.search(r'\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{2}\s+\w{3}\s+\d{4}', date_val))
+
+            if is_date:
+                txn = self._parse_row(row, col_map)
+                if txn:
+                    if current_txn:
+                        transactions.append(current_txn)
+                    current_txn = txn
+            elif current_txn:
+                if desc_val and desc_val not in current_txn.description:
+                    current_txn.description += f" {desc_val}"
+                    current_txn.description = current_txn.description.strip()
+                
+                debit_val = safe_get(row, 'debit')
+                if debit_val and not current_txn.debit:
+                    current_txn.debit = debit_val
+                    
+                credit_val = safe_get(row, 'credit')
+                if credit_val and not current_txn.credit:
+                    current_txn.credit = credit_val
+                    
+                amt_val = safe_get(row, 'amount')
+                if amt_val and not current_txn.amount:
+                    current_txn.amount = amt_val
+                    
+                bal_val = safe_get(row, 'balance')
+                if bal_val:
+                    current_txn.balance = bal_val
+                    
+                ref_val = safe_get(row, 'reference')
+                if ref_val and not current_txn.reference_no:
+                    current_txn.reference_no = ref_val
+
+        if current_txn:
+            transactions.append(current_txn)
 
         return transactions
 
@@ -246,11 +319,13 @@ class PDFExtractor(BaseExtractor):
         transactions = []
         lines = text.split('\n')
 
-        # Pattern: date followed by description and amounts
+        # Pattern: date at the start of line
         date_pattern = re.compile(
-            r'(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{2}\s+\w{3}\s+\d{4})'
+            r'^(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{2}\s+\w{3}\s+\d{4})'
         )
         amount_pattern = re.compile(r'[\d,]+\.\d{2}')
+
+        current_txn = None
 
         for line in lines:
             line = line.strip()
@@ -258,25 +333,38 @@ class PDFExtractor(BaseExtractor):
                 continue
 
             date_match = date_pattern.match(line)
-            if not date_match:
-                continue
+            if date_match:
+                if current_txn and (current_txn.amount or current_txn.debit or current_txn.credit):
+                    transactions.append(current_txn)
 
-            amounts = amount_pattern.findall(line)
-            if not amounts:
-                continue
+                date_str = date_match.group(1)
+                remainder = line[date_match.end():].strip()
 
-            description = line[date_match.end():].strip()
-            description = amount_pattern.sub('', description).strip()
+                amounts = amount_pattern.findall(remainder)
+                desc = amount_pattern.sub('', remainder).strip()
 
-            if len(description) < 3:
-                continue
+                current_txn = RawTransaction(
+                    date=date_str,
+                    description=desc,
+                    amount=amounts[0] if amounts else None,
+                    balance=amounts[-1] if len(amounts) > 1 else None,
+                )
+            elif current_txn:
+                amounts = amount_pattern.findall(line)
+                if amounts:
+                    if not current_txn.amount:
+                        current_txn.amount = amounts[0]
+                        if len(amounts) > 1:
+                            current_txn.balance = amounts[-1]
+                    else:
+                        current_txn.balance = amounts[-1]
 
-            txn = RawTransaction(
-                date=date_match.group(1),
-                description=description,
-                amount=amounts[0] if amounts else None,
-                balance=amounts[-1] if len(amounts) > 1 else None,
-            )
-            transactions.append(txn)
+                desc_part = amount_pattern.sub('', line).strip()
+                if desc_part:
+                    current_txn.description += f" {desc_part}"
+                    current_txn.description = current_txn.description.strip()
+
+        if current_txn and (current_txn.amount or current_txn.debit or current_txn.credit):
+            transactions.append(current_txn)
 
         return transactions
