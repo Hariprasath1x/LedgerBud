@@ -32,6 +32,7 @@ class User(Base):
     import_jobs = relationship("ImportJob", back_populates="user", cascade="all, delete-orphan")
     net_worth_items = relationship("NetWorthItem", back_populates="user", cascade="all, delete-orphan")
     net_worth_snapshots = relationship("NetWorthSnapshot", back_populates="user", cascade="all, delete-orphan")
+    fire_analyses = relationship("FireAnalysis", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User id={self.id} email={self.email!r}>"

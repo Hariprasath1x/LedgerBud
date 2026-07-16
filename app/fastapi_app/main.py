@@ -22,7 +22,7 @@ from app.fastapi_app.core.logging import configure_logging
 from app.fastapi_app.db.base import Base
 from app.fastapi_app.db.session import engine
 from app.fastapi_app.exceptions.handlers import register_exception_handlers
-from app.fastapi_app.models import Transaction, User, Wallet, Budget, Goal, Subscription, ImportJob  # noqa: F401 - ensure model registration
+from app.fastapi_app.models import Transaction, User, Wallet, Budget, Goal, Subscription, ImportJob, FireAnalysis  # noqa: F401 - ensure model registration
 from app.fastapi_app.api.routes.dashboard import router as dashboard_router
 
 
@@ -66,10 +66,12 @@ def create_app() -> FastAPI:
     from app.fastapi_app.api.routes.net_worth import router as net_worth_router
     from app.fastapi_app.api.routes.insights import router as insights_router
     from app.fastapi_app.api.routes.advisor import router as advisor_router
+    from app.fastapi_app.api.routes.fire import router as fire_router
     
     app.include_router(net_worth_router, prefix=settings.api_v1_prefix)
     app.include_router(insights_router, prefix=settings.api_v1_prefix)
     app.include_router(advisor_router, prefix=settings.api_v1_prefix)
+    app.include_router(fire_router, prefix=settings.api_v1_prefix)
 
     @app.get("/", tags=["Meta"])
     def root() -> dict[str, str]:

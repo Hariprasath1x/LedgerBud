@@ -98,3 +98,100 @@ User Question:
                 context_summary=context,
                 provider="error"
             )
+
+    def ask_fire_advisor(
+        self,
+        user_id: int,
+        question: str,
+        fire_context: dict,
+        history: list[dict] | None = None,
+    ) -> AdvisorResponse:
+        """FIRE-specific advisor with dedicated system prompt and enriched FIRE context."""
+        import json as _json
+
+        history_text = ""
+        if history:
+            snippets = [
+                f"{msg.get('role', 'user').capitalize()}: {msg.get('content', '')}"
+                for msg in history[-6:]
+            ]
+            history_text = "\n".join(snippets)
+
+        # Merge with general advisor context
+        general_context = self.get_context_summary(user_id)
+        combined_context = {**general_context, **fire_context}
+
+        prompt = f"""You are LedgerBud FIRE Coach — a Financial Independence & Early Retirement advisor.
+
+Your role:
+- Help users improve savings and reduce unnecessary expenses
+- Increase wealth through disciplined investing
+- Improve FIRE readiness and retire earlier
+- Provide realistic, data-backed suggestions
+- Never recommend risky speculative investments
+- Never recommend borrowing money to invest
+- Keep responses concise, practical, and personalized
+
+FIRE Financial Context (JSON):
+{_json.dumps(combined_context, indent=2, default=str)}
+
+Recent Conversation History:
+{history_text or 'No prior messages.'}
+
+User Question:
+{question}
+"""
+
+        api_key = (
+            os.environ.get("GROQ_API_KEY", "").strip()
+            or getattr(settings, "groq_api_key", "")
+        )
+
+        if not api_key:
+            return AdvisorResponse(
+                answer="The Groq API key is not configured. Please add GROQ_API_KEY to your environment variables to enable the FIRE Coach.",
+                context_summary=combined_context,
+                provider="fallback_no_key"
+            )
+
+        if Groq is None:
+            return AdvisorResponse(
+                answer="The 'groq' Python package is not installed. Please run `pip install groq` to enable the FIRE Coach.",
+                context_summary=combined_context,
+                provider="fallback_no_pkg"
+            )
+
+        try:
+            client = Groq(api_key=api_key)
+            completion = client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are LedgerBud FIRE Coach — a specialized Financial Independence advisor. "
+                            "Provide concise, practical, personalized advice based strictly on the user's "
+                            "financial data. Never recommend speculative investments or borrowing to invest. "
+                            "Focus on actionable steps to improve savings rate, reduce debt, and reach FIRE faster."
+                        )
+                    },
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=1200,
+                timeout=15.0
+            )
+            answer = completion.choices[0].message.content.strip()
+            return AdvisorResponse(
+                answer=answer,
+                context_summary=combined_context,
+                provider="groq_llama_3.1_fire"
+            )
+
+        except Exception as e:
+            logger.error(f"Groq FIRE API error: {e}")
+            return AdvisorResponse(
+                answer="I'm currently unable to process your FIRE coaching request. Please try again later.",
+                context_summary=combined_context,
+                provider="error"
+            )

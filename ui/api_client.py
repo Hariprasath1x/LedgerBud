@@ -317,6 +317,38 @@ class APIClient:
             payload["category"] = category
         return self._request("POST", "/analytics/whatif", json=payload)
 
+    # --- FIRE INTELLIGENCE ENGINE ---
+
+    def get_fire_dashboard(self) -> dict:
+        """Fetch the latest stored FIRE dashboard (has_data=False if no calc yet)."""
+        return self._request("GET", "/fire")
+
+    def calculate_fire(self, settings: dict) -> dict:
+        """
+        Run the full 10-step FIRE engine.
+        settings keys: current_age, retirement_target_age, investment_return,
+                       inflation_rate, lifestyle
+        """
+        return self._request("POST", "/fire/calculate", json=settings)
+
+    def get_fire_history(self, limit: int = 20) -> list[dict]:
+        """Return historical FIRE analysis records."""
+        return self._request("GET", "/fire/history", params={"limit": limit})
+
+    def ask_fire_coach(
+        self,
+        question: str,
+        history: list[dict] | None = None,
+        fire_context: dict | None = None,
+    ) -> dict:
+        """Ask the FIRE Coach AI — delegates to Groq with FIRE-specific system prompt."""
+        payload: dict = {"question": question}
+        if history:
+            payload["history"] = history
+        if fire_context:
+            payload["fire_context"] = fire_context
+        return self._request("POST", "/fire/ai", json=payload)
+
 
 # Single shared client instance
 api_client = APIClient()
