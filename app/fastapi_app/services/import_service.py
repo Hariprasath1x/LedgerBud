@@ -169,7 +169,7 @@ class ImportService:
                 return ext
         return None
 
-    def _transform_transaction(self, raw_txn) -> NormalizedTransaction | None:
+    def _transform_transaction(self, raw_txn, engine) -> NormalizedTransaction | None:
         parsed_date = parse_date(raw_txn.date)
         if not parsed_date:
             return None
@@ -178,21 +178,27 @@ class ImportService:
         )
         if not amount or amount <= 0:
             return None
+            
         description = clean_description(raw_txn.description)
         balance = parse_amount(raw_txn.balance) if raw_txn.balance else None
         
-        _, merchant_name = resolve_merchant(description, {})
+        # New Recognition Engine
+        decision = engine.recognize(raw_txn.description, description)
         
-        return NormalizedTransaction(
+        norm = NormalizedTransaction(
             date=parsed_date,
             description=description,
             amount=amount,
             type=txn_type,
             balance_after=balance,
             reference_no=raw_txn.reference_no,
-            merchant_name_raw=merchant_name or description[:100],
+            merchant_name_raw=decision.canonical_name,
             raw_date_str=raw_txn.date or '',
         )
+        # Monkey-patch decision onto NormalizedTransaction for downstream use
+        norm.decision = decision
+        norm.raw_description = raw_txn.description
+        return norm
 
     def _get_existing_fingerprints(self, wallet_id: int) -> list:
         txns = self.session.scalars(select(Transaction).where(Transaction.wallet_id == wallet_id)).all()
@@ -203,6 +209,14 @@ class ImportService:
 
     def _run_etl_extract(self, file_path: str, job_id: int, wallet_id: int) -> dict:
         """Extract and transform without saving."""
+        from app.etl.transformer.recognition_engine import MerchantRecognitionEngine
+        
+        # Get user_id from job
+        job = self.session.scalar(select(ImportJob).where(ImportJob.id == job_id))
+        user_id = job.user_id if job else 0
+        
+        engine = MerchantRecognitionEngine(self.session, user_id)
+        
         extractor = self._get_extractor(file_path)
         if not extractor:
             raise ValueError(f"No extractor available for file: {file_path}")
@@ -215,12 +229,12 @@ class ImportService:
         failed = 0
         for raw in ext_res.transactions:
             try:
-                norm = self._transform_transaction(raw)
+                norm = self._transform_transaction(raw, engine)
                 if norm:
                     normalized.append(norm)
                 else:
                     failed += 1
-            except Exception:
+            except Exception as e:
                 failed += 1
                 
         existing = self._get_existing_fingerprints(wallet_id)
@@ -235,9 +249,11 @@ class ImportService:
                 'description': txn.description,
                 'amount': str(txn.amount),
                 'transaction_type': txn.type.capitalize() if txn.type else 'Expense',
-                'merchant_name': txn.merchant_name_raw,
-                'category': None,
+                'merchant_name': txn.decision.canonical_name if hasattr(txn, 'decision') else txn.merchant_name_raw,
+                'category': txn.decision.category if hasattr(txn, 'decision') else None,
                 'is_duplicate': False,
+                'confidence_score': txn.decision.confidence_score if hasattr(txn, 'decision') else None,
+                'recognition_source': txn.decision.recognition_source if hasattr(txn, 'decision') else None,
             })
             
         return {
@@ -253,6 +269,11 @@ class ImportService:
 
     def _run_etl_commit(self, file_path: str, job_id: int, wallet_id: int, user_id: int) -> dict:
         """Extract, transform, and load unique transactions to database."""
+        from app.etl.transformer.recognition_engine import MerchantRecognitionEngine
+        from app.fastapi_app.models.merchant import Merchant
+        
+        engine = MerchantRecognitionEngine(self.session, user_id)
+        
         extractor = self._get_extractor(file_path)
         if not extractor:
             raise ValueError("No extractor available")
@@ -262,7 +283,7 @@ class ImportService:
         normalized = []
         for raw in ext_res.transactions:
             try:
-                norm = self._transform_transaction(raw)
+                norm = self._transform_transaction(raw, engine)
                 if norm:
                     normalized.append(norm)
             except Exception:
@@ -274,20 +295,59 @@ class ImportService:
         imported_count = 0
         for norm in unique_txns:
             try:
+                merchant_id = None
+                if hasattr(norm, 'decision'):
+                    decision = norm.decision
+                    
+                    # Update or Create Merchant Profile
+                    merchant = None
+                    if decision.merchant_id:
+                        merchant = self.session.scalar(select(Merchant).where(Merchant.id == decision.merchant_id))
+                    
+                    if not merchant and decision.unique_identifier:
+                        # Priority 1: Create a new memory profile
+                        merchant = Merchant(
+                            user_id=user_id,
+                            unique_identifier=decision.unique_identifier,
+                            display_name=decision.canonical_name,
+                            category=decision.category,
+                            confidence_score=decision.confidence_score,
+                            recognition_source=decision.recognition_source,
+                            user_confirmation_status=False
+                        )
+                        self.session.add(merchant)
+                        self.session.flush()
+                    
+                    if merchant:
+                        # Update stats
+                        merchant.total_transactions += 1
+                        merchant.total_amount += float(norm.amount)
+                        merchant.last_seen = func.now() if hasattr(func, 'now') else datetime.utcnow()
+                        merchant_id = merchant.id
+                        
                 txn = Transaction(
                     user_id=user_id,
                     wallet_id=wallet_id,
-                    merchant_name=norm.merchant_name_raw or norm.description[:100],
-                    category=None,
+                    merchant_id=merchant_id,
+                    merchant_name=norm.merchant_name_raw or norm.description[:100], # Legacy fallback
+                    category=decision.category if hasattr(norm, 'decision') else None,
                     amount=norm.amount,
                     transaction_type=norm.type.capitalize() if norm.type else "Expense",
                     notes=norm.description,
                     transaction_date=norm.date,
-                    is_transfer=False
+                    is_transfer=False,
+                    raw_description=getattr(norm, 'raw_description', None),
+                    normalized_description=norm.description,
+                    confidence_score=decision.confidence_score if hasattr(norm, 'decision') else None,
+                    recognition_source=decision.recognition_source if hasattr(norm, 'decision') else None,
+                    matching_method=decision.matching_method if hasattr(norm, 'decision') else None,
+                    reason_for_decision=decision.reason_for_decision if hasattr(norm, 'decision') else None
                 )
                 self.session.add(txn)
                 imported_count += 1
-            except Exception:
+            except Exception as e:
+                import logging
+                logging.exception("Error committing transaction")
                 pass
                 
         if unique_txns:

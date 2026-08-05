@@ -26,9 +26,19 @@ class Transaction(Base):
     transfer_pair_id: Mapped[int | None] = mapped_column(
         ForeignKey("transactions.id", ondelete="SET NULL"), nullable=True, index=True
     )
+    
+    # Financial Intelligence Pipeline Fields
+    merchant_id: Mapped[int | None] = mapped_column(ForeignKey("merchants.id", ondelete="SET NULL"), nullable=True, index=True)
+    raw_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    normalized_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    confidence_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    recognition_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    matching_method: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    reason_for_decision: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     user = relationship("User", back_populates="transactions")
     wallet = relationship("Wallet", back_populates="transactions")
+    merchant = relationship("Merchant", back_populates="transactions")
     transfer_pair = relationship("Transaction", remote_side="Transaction.id", foreign_keys=[transfer_pair_id])
 
     def __repr__(self) -> str:

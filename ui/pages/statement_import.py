@@ -6,8 +6,8 @@ from ui.api_client import api_client
 from ui.formatters import format_currency, format_date
 from ui.components.error_banner import render_error_banner
 
-st.title("Statement Ingestion")
-st.markdown("Import PDF/CSV bank statements directly into wallet transaction records.")
+st.title("AI Financial Intelligence Pipeline")
+st.markdown("Upload your bank statements to run them through our AI Pipeline. We automatically resolve merchants using confidence scoring and structural analysis.")
 
 # Retrieve wallets for forms
 try:
@@ -39,13 +39,13 @@ with col_upload:
         )
 
         if uploaded_file is not None:
-            if st.button("Process & Parse Statement", type="primary", use_container_width=True):
-                with st.status("Ingesting file...", expanded=True) as status_indicator:
+            if st.button("Process & Run AI Pipeline", type="primary", use_container_width=True):
+                with st.status("Analyzing file...", expanded=True) as status_indicator:
                     try:
                         status_indicator.write("Uploading file to server...")
                         file_bytes = uploaded_file.read()
                         
-                        status_indicator.write("Parsing bank transaction records...")
+                        status_indicator.write("Running AI Merchant Recognition Engine...")
                         preview = api_client.upload_statement(
                             wallet_id=wallet_options[target_wallet],
                             filename=uploaded_file.name,
@@ -53,18 +53,18 @@ with col_upload:
                         )
                         
                         st.session_state.import_preview = preview
-                        status_indicator.update(label="Parsing complete!", state="complete", expanded=False)
-                        st.success("File processed. Review the extracted data below.")
+                        status_indicator.update(label="Analysis complete!", state="complete", expanded=False)
+                        st.success("File processed. Review the intelligence data below.")
                     except Exception as exc:
                         status_indicator.update(label="Processing failed.", state="error")
                         render_error_banner(exc, "processing statement upload")
 
 with col_history:
-    st.subheader("🕒 Previous Import Jobs")
+    st.subheader("🕒 Previous Pipeline Runs")
     try:
         jobs = api_client.list_import_jobs()
         if not jobs:
-            st.info("No import history found.")
+            st.info("No run history found.")
         else:
             j_df = pd.DataFrame(jobs)
             j_df = j_df[["id", "original_filename", "status", "total_records", "imported_count", "created_at"]]
@@ -81,7 +81,7 @@ if st.session_state.import_preview:
     preview = st.session_state.import_preview
     job_id = preview.get("job_id")
     
-    st.subheader("🔍 Review Transactions & Confirm Import")
+    st.subheader("🔍 Review AI Intelligence & Confirm Import")
     
     # Render metadata metrics
     col_t, col_u, col_d, col_f = st.columns(4)
@@ -104,8 +104,8 @@ if st.session_state.import_preview:
     else:
         df_preview = pd.DataFrame(txns)
         # Select and format columns
-        df_preview = df_preview[["date", "description", "amount", "transaction_type", "merchant_name", "category", "is_duplicate"]]
-        df_preview.columns = ["Date", "Description", "Amount", "Type", "Resolved Merchant", "Resolved Category", "Duplicate?"]
+        df_preview = df_preview[["date", "description", "amount", "transaction_type", "merchant_name", "category", "confidence_score", "recognition_source", "is_duplicate"]]
+        df_preview.columns = ["Date", "Description", "Amount", "Type", "Resolved Merchant", "Resolved Category", "Confidence %", "Recognition Source", "Duplicate?"]
         
         column_config = {
             "Date": st.column_config.TextColumn("Date"),
@@ -114,6 +114,8 @@ if st.session_state.import_preview:
             "Type": st.column_config.TextColumn("Type"),
             "Resolved Merchant": st.column_config.TextColumn("Resolved Merchant"),
             "Resolved Category": st.column_config.TextColumn("Resolved Category"),
+            "Confidence %": st.column_config.ProgressColumn("Confidence %", min_value=0, max_value=100, format="%d%%"),
+            "Recognition Source": st.column_config.TextColumn("Recognition Source"),
             "Duplicate?": st.column_config.CheckboxColumn("Duplicate?"),
         }
         

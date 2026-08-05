@@ -61,6 +61,33 @@ def parse_amount(amount_str: str) -> Optional[Decimal]:
         return None
 
 
+def extract_structured_tokens(raw_desc: str) -> dict:
+    """Extract structural tokens (UPI IDs, VPAs, Merchant IDs) from raw description."""
+    tokens = {
+        "upi_id": None,
+        "vpa": None,
+        "merchant_id": None,
+        "psp_ref": None,
+    }
+    if not raw_desc:
+        return tokens
+
+    desc = raw_desc.upper()
+
+    # Match common UPI / VPA formats (e.g. name@bank or UPI/NAME@BANK/...)
+    vpa_match = re.search(r'([A-Z0-9.\-_]+@[A-Z]+)', desc)
+    if vpa_match:
+        tokens["vpa"] = vpa_match.group(1).lower()
+        tokens["upi_id"] = tokens["vpa"]  # VPA is often synonymous with UPI ID
+
+    # Match merchant identifiers if labelled explicitly
+    mid_match = re.search(r'MID[/\-\s]+([A-Z0-9]+)', desc)
+    if mid_match:
+        tokens["merchant_id"] = mid_match.group(1)
+        
+    return tokens
+
+
 def clean_description(desc: str) -> str:
     """Clean and normalize a transaction description."""
     if not desc:
@@ -69,18 +96,11 @@ def clean_description(desc: str) -> str:
     # Remove excess whitespace
     desc = ' '.join(desc.split())
 
-    # Remove common noise patterns
-    noise_patterns = [
-        r'UPI-REF\d+',
-        r'NEFT/\d+/',
-        r'IMPS/\d+/',
-        r'\b\d{10,}\b',  # Remove long numeric strings (transaction IDs embedded in desc)
-    ]
-
-    for pattern in noise_patterns:
-        desc = re.sub(pattern, '', desc, flags=re.IGNORECASE)
-
-    return ' '.join(desc.split()).strip()
+    # We do NOT want to aggressively remove noise here anymore because we have a dedicated engine,
+    # but we still clean up formatting for easier reading.
+    # Keep it simple, just uppercase and strip excess spaces.
+    desc = ' '.join(desc.split()).strip()
+    return desc
 
 
 def determine_transaction_type(debit: str, credit: str, amount: str, description: str) -> tuple:
