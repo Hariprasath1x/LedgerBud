@@ -43,6 +43,8 @@ class Settings(BaseSettings):
             return env_database_url
         if env_database_url and env_database_url.startswith(("postgresql+", "postgres://", "postgresql://")):
             return env_database_url
+        if env_database_url and env_database_url.startswith(("sqlite",)):
+            return env_database_url
         return self.mysql_database_url
 
     @field_validator("cors_origins", mode="before")

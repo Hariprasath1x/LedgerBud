@@ -3,12 +3,18 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py[cod]
+*$py.class
 .Python
 
 # Virtual environments
 .venv/
+.venv
 venv/
 env/
+ENV/
+env.bak/
+venv.bak/
 
 # Environment variables
 .env

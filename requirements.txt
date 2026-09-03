@@ -11,7 +11,7 @@ bcrypt==4.2.1
 email-validator==2.2.0
 python-multipart==0.0.20
 pymysql==1.1.1
-psycopg2-binary==2.9.9
+# psycopg2-binary==2.9.9
 pdfplumber==0.11.4
 pandas==2.2.2
 openpyxl==3.1.5
@@ -21,7 +21,7 @@ SQLAlchemy==2.0.35
 alembic==1.13.3
 python-dateutil==2.9.0.post0
 fuzzywuzzy==0.18.0
-python-Levenshtein==0.25.1
+python-Levenshtein
 Pillow==10.4.0
 pytz==2024.2
 streamlit>=1.35.0
