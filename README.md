@@ -80,18 +80,16 @@ FASTAPI_BASE_URL=http://localhost:8000
 pip install -r requirements.txt
 ```
 
-### 3. Start the FastAPI Backend
-```bash
-python run_fastapi.py
-```
-*   **Swagger Documentation**: Open [http://localhost:8000/docs](http://localhost:8000/docs) to view and test backend routes.
+### 3. Start Both Servers (FastAPI & Streamlit)
+We provide a unified startup script to launch both the backend and frontend concurrently.
 
-### 4. Start the Streamlit Frontend
-In a new terminal window:
 ```bash
-streamlit run streamlit_app.py
+python start_servers.py
 ```
-*   **Access the App**: Open [http://localhost:8501](http://localhost:8501) in your browser.
+*(On Windows, you can also run `start.bat` to automatically activate your virtual environment and start the servers).*
+
+*   **Access the App (UI)**: Open [http://localhost:8501](http://localhost:8501) in your browser.
+*   **Swagger Documentation (API)**: Open [http://localhost:8000/docs](http://localhost:8000/docs) to view and test backend routes.
 
 ---
 
@@ -158,6 +156,8 @@ flask run --port=5000
 │   ├── seeder.py          # Category & Merchant dictionary database seeds
 │   └── extensions.py      # Flask extensions helper
 ├── ui/                    # Streamlit frontend pages & API components
+├── start_servers.py       # Script to concurrently launch FastAPI and Streamlit
+├── start.bat              # Windows startup script
 ├── streamlit_app.py       # Main Streamlit app launcher
 ├── run_fastapi.py         # FastAPI app launcher
 ├── run.py                 # Flask app launcher
