@@ -1,166 +1,197 @@
-# LedgerBud 📈
+# 💼 LedgerBud — Personal Finance Intelligence Platform
 
-**LedgerBud** is a modern, production-ready Financial Intelligence Platform designed to parse statements, auto-categorize spending, track budgets, evaluate financial health, and project future wealth. 
+A production-ready personal finance platform with AI-powered insights, built on **FastAPI** (backend) and **Streamlit** (frontend).
 
-The platform features a **native Streamlit UI dashboard** communicating with a high-performance **FastAPI backend** using SQLAlchemy and JWT authentication. It also supports a legacy **Flask MVC UI** for backward compatibility.
+---
+
+## ✨ Features
+
+### Core
+- **Multi-Wallet Management** — Bank, Credit Card, UPI, Cash wallets with real-time balances
+- **Transaction Tracking** — Full CRUD with categories, merchants, search & filtering
+- **Inter-Wallet Transfers** — Move funds between wallets with automatic double-entry bookkeeping
+- **Statement Import** — Upload PDF/CSV/Excel bank statements with intelligent parsing
+
+### Planning
+- **Budgets** — Category-based monthly budgets with utilization tracking (healthy → warning → exceeded)
+- **Savings Goals** — Set targets, track contributions, visualize progress
+- **Subscription Detection** — Auto-detect recurring payments from transaction patterns
+
+### Intelligence
+- **Financial Dashboard** — Income vs expense trends, category breakdowns, top merchants
+- **Health Score** — Composite financial health rating (A–F) with actionable suggestions
+- **Smart Insights** — AI-generated spending alerts, month-over-month anomaly detection
+- **Net Worth Tracker** — Track assets & liabilities with point-in-time snapshots
+- **FIRE Planner** — Financial Independence / Retire Early calculator with 10-step engine
+- **AI Financial Advisor** — Chat with an LLM-powered advisor using your real financial data
+- **Analytics** — Trend analysis, category deep-dives, what-if scenarios
 
 ---
 
 ## 🏗️ Architecture
 
-LedgerBud operates on a decoupled client-server architecture:
+```
+┌─────────────────┐      HTTP/JSON       ┌──────────────────┐
+│  Streamlit UI   │ ◄──────────────────► │  FastAPI Backend  │
+│  (port 8501)    │                      │  (port 8000)      │
+└─────────────────┘                      └────────┬─────────┘
+                                                  │
+                                         ┌────────▼─────────┐
+                                         │  PostgreSQL 15    │
+                                         │  (port 5432)      │
+                                         └──────────────────┘
+```
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                       Streamlit UI                          │
-│            (Interactive Dashboard & Charts - 8501)          │
-└──────────────────────────────┬──────────────────────────────┘
-                               │ (HTTP + JWT Auth)
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                      FastAPI Backend                        │
-│               (REST API Services - Port 8000)               │
-└──────┬───────────────────────────────────────────────┬──────┘
-       │ (ORM / Migrations)                            │ (Ingestion ETL)
-       ▼                                               ▼
-┌──────────────────────────────┐              ┌────────────────┐
-│         SQLAlchemy           │              │  pdfplumber /  │
-│         (Database)           │              │  Pandas Engine │
-└──────────────┬───────────────┘              └────────────────┘
-               ▼
-┌──────────────────────────────┐
-│   PostgreSQL / MySQL / DB    │
-└──────────────────────────────┘
-```
+| Layer | Technology |
+|-------|-----------|
+| Frontend | Streamlit 1.35+, Plotly |
+| Backend API | FastAPI 0.109, Uvicorn, Pydantic v2 |
+| Database | PostgreSQL 15 (Docker) / SQLite (local dev) |
+| ORM | SQLAlchemy 2.0 (async-ready, declarative mapped columns) |
+| Auth | JWT (PyJWT + bcrypt), optional Firebase Auth |
+| AI | Groq LLM API (Llama 3) |
+| Import Engine | pdfplumber, pandas, openpyxl |
 
 ---
 
-## 🧩 Core Features
+## 🚀 Quick Start
 
-*   **🧠 Groq AI Financial Advisor**: Interactive personal finance advisor powered by Groq and LLaMA 3.1. It generates a privacy-preserving aggregated context of your monthly financials (wallet balances, health score, category totals, net worth, budgets, active goals, and anomalies) without ever sending raw transaction logs to the LLM.
-*   **🏦 Net Worth Tracker**: Monitor your absolute net worth by adding and updating custom assets and liabilities. It records point-in-time historical snapshots to visualize long-term wealth trends using interactive Plotly charts.
-*   **🔍 Deterministic Insights Engine**: A robust, rule-based engine that automatically highlights financial risks (like zero-income months, category spending spikes exceeding 3-month averages by 150%+, budget utilization over 80%/100%, and drops in MoM savings rate).
-*   **💳 Complete Multi-Wallet Management**: Comprehensive management of accounts supporting Bank, Cash, UPI, and Credit card types. Enables archiving accounts safely while preserving transaction logs, and performing atomic transfers between wallets (generating linked income-expense transaction pairs).
-*   **📥 Smart Statement Ingestion (ETL) Engine**: Drag-and-drop ingestion of Bank PDF/CSV/XLSX statements (optimized for Indian banks like SBI, HDFC, ICICI, Axis, Canara, etc.). Built on clean ETL principles:
-    *   **Extract**: Fast text & table parsing using `pdfplumber` and `pandas`.
-    *   **Transform**: Intelligent deduplication, missing value checks, date/currency normalization, and auto-mapping.
-    *   **Load**: Transaction persistence with pre-import previews and transparency logs.
-*   **🏷️ Merchant Dictionary Engine**: Automatic categorization of noisy transaction strings (e.g., `UPI/SWIGGY` or `SWIGGY ONLINE` mapped to `Swiggy` under the `Food & Dining` category).
-*   **📊 Financial Overview & Analytics**: Live visualization of cash flow, wallet balances, and categorical expense distributions via Plotly.
-*   **📈 Budget Monitoring**: Create monthly, category-level spending thresholds and track real-time consumption.
-*   **🎯 Savings Goals Tracker**: Set target values, track contributions, and project completion dates.
-*   **🔄 Subscription & Recurring Payment Detector**: Automatically identify recurring expenses (e.g., Netflix, Spotify) to prevent subscription leakages.
-*   **🧠 Intelligence Layer**: Calculate a 0-100 Financial Health Score based on budget discipline, saving rate, and debt-to-income ratio, paired with actionable rule-based advisory insights.
-*   **🧮 What-If Compound Interest Calculator**: Simulate the long-term wealth impact (10+ year projections) of reducing minor spending categories.
+### Docker (Recommended)
 
----
-
-## 🚀 Running LedgerBud Locally (Recommended Stack)
-
-Follow these steps to run the modern Streamlit frontend and FastAPI backend.
-
-### 1. Configure the Environment
-Create or edit your `.env` file in the project root:
-
-```env
-# Database Connection (MySQL or PostgreSQL)
-DATABASE_URL=mysql+pymysql://root:root@localhost:3306/ledgerbud
-
-# Security & JWT Configuration
-JWT_SECRET_KEY=ledgerbud-super-secret-key-change-in-production
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-
-# FastAPI Configuration
-AUTO_CREATE_TABLES=true
-FASTAPI_BASE_URL=http://localhost:8000
-```
-
-### 2. Install Dependencies
 ```bash
+# Clone and start
+git clone https://github.com/your-username/ledgerbud.git
+cd ledgerbud
+
+# Start all services (PostgreSQL + App)
+docker compose up -d --build
+
+# Wait ~20 seconds for startup, then open:
+#   Frontend UI:  http://localhost:8501
+#   Backend API:  http://localhost:8000
+#   API Docs:     http://localhost:8000/docs
+```
+
+### Local Development (No Docker)
+
+```bash
+# 1. Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# 2. Install dependencies
 pip install -r requirements.txt
-```
 
-### 3. Start Both Servers (FastAPI & Streamlit)
-We provide a unified startup script to launch both the backend and frontend concurrently.
+# 3. Configure environment
+#    Edit .env and uncomment/add DATABASE_URL for your preferred DB:
+#    DATABASE_URL=sqlite:///./ledgerbud.db          (simplest)
+#    DATABASE_URL=postgresql://user:pass@localhost:5432/ledgerbud
 
-```bash
+# 4. Start the application
 python start_servers.py
-```
-*(On Windows, you can also run `start.bat` to automatically activate your virtual environment and start the servers).*
 
-*   **Access the App (UI)**: Open [http://localhost:8501](http://localhost:8501) in your browser.
-*   **Swagger Documentation (API)**: Open [http://localhost:8000/docs](http://localhost:8000/docs) to view and test backend routes.
-
----
-
-## 🐳 Quick Start with Docker (Legacy Flask Stack)
-
-If you prefer to run the legacy Flask MVC interface (Port 5000) or test the application within Docker, use the following compose configuration.
-
-### Prerequisites
-*   Docker
-*   Docker Compose
-
-### 1. Build and Run Containers
-```bash
-docker-compose up --build -d
-```
-This command starts:
-1.  A PostgreSQL 15 database instance.
-2.  The Flask web server configured to build and seed database tables automatically on launch.
-
-### 2. Access the Application
-*   Open your browser and navigate to: [http://localhost:5000](http://localhost:5000)
-
-### 3. Tear Down
-```bash
-docker-compose down
+# Open http://localhost:8501 in your browser
 ```
 
 ---
 
-## 🏗️ Legacy Stack Manual Setup (Flask)
+## ⚙️ Configuration
 
-If you wish to run the Flask application directly on your local machine:
+All configuration is managed via environment variables (`.env` file or Docker environment).
 
-### 1. Initialize the Database
-Ensure PostgreSQL or MySQL is running, then create a database named `ledgerbud`.
-Run the CLI command to initialize tables and seed initial category / merchant dictionary data:
-```bash
-flask create-db
-```
-*(Alternatively, run `flask seed` to re-seed category mapping rules).*
-
-### 2. Run the Server
-```bash
-python run.py
-```
-or
-```bash
-flask run --port=5000
-```
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DATABASE_URL` | *(set in docker-compose)* | Database connection string |
+| `JWT_SECRET_KEY` | `change-me-in-production` | Secret for JWT token signing |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | `60` | JWT token lifetime |
+| `AUTO_CREATE_TABLES` | `true` | Auto-create DB tables on startup |
+| `FASTAPI_BASE_URL` | `http://localhost:8000` | URL Streamlit uses to reach the API |
+| `GROQ_API_KEY` | *(empty)* | Groq API key for AI Advisor & FIRE Coach |
+| `USE_FIREBASE` | `false` | Enable Firebase Authentication |
+| `FIREBASE_API_KEY` | *(empty)* | Firebase Web API Key |
+| `FIREBASE_PROJECT_ID` | *(empty)* | Firebase Project ID |
 
 ---
 
-## 📂 Project Structure
+## 📁 Project Structure
 
 ```
+ledgerbud/
 ├── app/
-│   ├── etl/               # PDF/CSV statement extraction & transformation engine
-│   ├── fastapi_app/       # Modern FastAPI backend (routes, models, schemas, services)
-│   ├── intelligence/      # Financial Health Score & Merchant Dictionary engine
-│   ├── models/            # Legacy SQLAlchemy Flask models
-│   ├── routes/            # Legacy Flask Blueprints & route handlers
-│   ├── static/            # Static assets
-│   ├── templates/         # Legacy HTML templates
-│   ├── seeder.py          # Category & Merchant dictionary database seeds
-│   └── extensions.py      # Flask extensions helper
-├── ui/                    # Streamlit frontend pages & API components
-├── start_servers.py       # Script to concurrently launch FastAPI and Streamlit
-├── start.bat              # Windows startup script
-├── streamlit_app.py       # Main Streamlit app launcher
-├── run_fastapi.py         # FastAPI app launcher
-├── run.py                 # Flask app launcher
-└── docker-compose.yml     # Docker compose file for PostgreSQL and Flask
+│   └── fastapi_app/           # FastAPI backend
+│       ├── api/
+│       │   ├── deps.py        # Dependency injection (auth, DB session)
+│       │   └── routes/        # API route handlers
+│       ├── core/              # Config, security, logging, Firebase
+│       ├── db/                # SQLAlchemy engine & session
+│       ├── exceptions/        # Global exception handlers
+│       ├── models/            # SQLAlchemy ORM models
+│       ├── repositories/      # Data access layer
+│       ├── schemas/           # Pydantic request/response schemas
+│       ├── services/          # Business logic layer
+│       └── main.py            # FastAPI app factory
+├── ui/                        # Streamlit frontend
+│   ├── api_client.py          # HTTP client for FastAPI
+│   ├── auth.py                # Login/Register page
+│   ├── navigation.py          # Multi-page routing
+│   ├── state.py               # Session state manager
+│   ├── components/            # Reusable UI components
+│   └── pages/                 # Individual page modules
+├── streamlit_app.py           # Streamlit entry point
+├── run_fastapi.py             # Uvicorn launcher
+├── start_servers.py           # Dual-server orchestrator
+├── docker-compose.yml         # Docker services (web + db)
+├── Dockerfile                 # Container build
+├── requirements.txt           # Python dependencies
+└── .env                       # Environment configuration
 ```
 
+---
+
+## 🔌 API Documentation
+
+Once running, interactive API documentation is available at:
+
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+
+### Key Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/v1/auth/register` | Create account |
+| POST | `/api/v1/auth/login` | Sign in (returns JWT) |
+| GET | `/api/v1/dashboard` | Full dashboard payload |
+| GET/POST | `/api/v1/wallets` | List / create wallets |
+| GET/POST | `/api/v1/transactions` | List / create transactions |
+| GET/POST | `/api/v1/budgets` | Budget management |
+| GET/POST | `/api/v1/goals` | Savings goal tracking |
+| GET | `/api/v1/subscriptions` | Subscription detection |
+| POST | `/api/v1/imports/upload` | Statement upload |
+| GET | `/api/v1/analytics/trends` | Spending trends |
+| POST | `/api/v1/fire/calculate` | FIRE analysis engine |
+| POST | `/api/v1/advisor/ask` | AI financial advisor |
+
+---
+
+## 🛠️ Development
+
+```bash
+# Rebuild Docker after code changes
+docker compose up -d --build
+
+# View logs
+docker logs ledgerbud_web -f
+
+# Reset database (fresh start)
+docker compose down -v && docker compose up -d --build
+
+# Access PostgreSQL directly
+docker exec -it ledgerbud_db psql -U postgres -d ledgerbud
+```
+
+---
+
+## 📄 License
+
+MIT

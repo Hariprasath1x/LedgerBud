@@ -2,16 +2,18 @@ import subprocess
 import sys
 import os
 import platform
+import shutil
 import time
 
 def kill_port(port):
-    """Kills any process listening on the specified port."""
+    """Kills any process listening on the specified port (best-effort, silent failures)."""
     if platform.system() == "Windows":
-        # We need to run this command safely to avoid errors if port is not in use
         cmd = f'for /f "tokens=5" %a in (\'netstat -aon ^| findstr ":{port}" ^| findstr "LISTENING"\') do taskkill /F /PID %a >nul 2>&1'
         os.system(cmd)
     else:
-        os.system(f'lsof -ti:{port} | xargs kill -9 >/dev/null 2>&1')
+        # Only attempt if lsof is available (not present in slim Docker images)
+        if shutil.which("lsof"):
+            os.system(f'lsof -ti:{port} | xargs kill -9 >/dev/null 2>&1')
 
 def main():
     print("Checking and freeing up ports (8000 for Backend, 8501 for Frontend)...")
@@ -25,7 +27,7 @@ def main():
     backend = subprocess.Popen([sys.executable, "run_fastapi.py"])
     
     # We use python -m streamlit to ensure we use the current environment's streamlit
-    frontend = subprocess.Popen([sys.executable, "-m", "streamlit", "run", "streamlit_app.py"])
+    frontend = subprocess.Popen([sys.executable, "-m", "streamlit", "run", "streamlit_app.py", "--server.address", "0.0.0.0", "--server.headless", "true"])
     
     print("\n" + "="*50)
     print("LedgerBud Application is now running!")

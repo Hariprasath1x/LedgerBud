@@ -1,31 +1,46 @@
-Flask==3.0.3
-Flask-SQLAlchemy==3.1.1
-Flask-Migrate==4.0.7
-Flask-APScheduler==1.13.1
-fastapi==0.115.6
+# ──────────────────────────────────────────────
+# LedgerBud — Python Dependencies
+# FastAPI + Streamlit Architecture
+# ──────────────────────────────────────────────
+
+# --- Backend (FastAPI) ---
+fastapi==0.109.2
 uvicorn[standard]==0.32.1
 pydantic==2.10.4
 pydantic-settings==2.6.1
+SQLAlchemy==2.0.35
+alembic==1.13.3
+
+# --- Authentication ---
 PyJWT==2.10.1
 bcrypt==4.2.1
 email-validator==2.2.0
 python-multipart==0.0.20
-pymysql==1.1.1
-# psycopg2-binary==2.9.9
-pdfplumber==0.11.4
-pandas==2.2.2
-openpyxl==3.1.5
-python-dotenv==1.0.1
-Werkzeug==3.0.4
-SQLAlchemy==2.0.35
-alembic==1.13.3
-python-dateutil==2.9.0.post0
-fuzzywuzzy==0.18.0
-python-Levenshtein
-Pillow==10.4.0
-pytz==2024.2
+
+# --- Database Drivers ---
+psycopg2-binary==2.9.9
+
+# --- Firebase (optional, enable via USE_FIREBASE=true) ---
+firebase-admin>=6.5.0
+cryptography>=42.0.0
+
+# --- Frontend (Streamlit) ---
 streamlit>=1.35.0
 plotly>=5.22.0
 httpx>=0.27.0
+
+# --- Data Processing & Import ---
+pdfplumber==0.11.4
+pandas==2.2.2
+openpyxl==3.1.5
+python-dateutil==2.9.0.post0
+fuzzywuzzy==0.18.0
+python-Levenshtein
+
+# --- AI / LLM ---
 groq>=0.9.0
-firebase-admin>=6.5.0
+
+# --- Utilities ---
+python-dotenv==1.0.1
+Pillow==10.4.0
+pytz==2024.2

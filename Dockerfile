@@ -3,6 +3,9 @@ FROM python:3.10-slim
 # Set working directory
 WORKDIR /app
 
+# Ensure Python output is sent straight to terminal (no buffering)
+ENV PYTHONUNBUFFERED=1
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -19,12 +22,8 @@ COPY . .
 # Make the entrypoint script executable
 RUN chmod +x entrypoint.sh
 
-# Expose port
-EXPOSE 5000
-
-# Set environment variables
-ENV FLASK_APP=run.py
-ENV FLASK_ENV=development
+# Expose FastAPI (8000) and Streamlit (8501) ports
+EXPOSE 8000 8501
 
 # Run the entrypoint script
 ENTRYPOINT ["./entrypoint.sh"]
