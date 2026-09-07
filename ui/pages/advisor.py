@@ -4,7 +4,7 @@ import streamlit as st
 from ui.api_client import api_client
 
 st.title("AI Financial Advisor")
-st.markdown("Chat with your intelligent advisor. Powered by Groq and LLaMA 3.1.")
+st.markdown("Chat with your intelligent advisor. Powered by Groq and GPT-OSS 120B.")
 
 # Initialize chat history in session state
 if "advisor_messages" not in st.session_state:

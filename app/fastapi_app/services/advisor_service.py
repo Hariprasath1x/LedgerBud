@@ -74,7 +74,7 @@ User Question:
         try:
             client = Groq(api_key=api_key)
             completion = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model=settings.groq_model,
                 messages=[
                     {"role": "system", "content": "You are LedgerBud, a precise and highly analytical personal finance advisor."},
                     {"role": "user", "content": prompt}
@@ -88,7 +88,7 @@ User Question:
             return AdvisorResponse(
                 answer=answer,
                 context_summary=context,
-                provider="groq_llama_3.1"
+                provider="groq_gpt_oss_120b"
             )
             
         except Exception as e:
@@ -164,7 +164,7 @@ User Question:
         try:
             client = Groq(api_key=api_key)
             completion = client.chat.completions.create(
-                model="llama-3.1-8b-instant",
+                model=settings.groq_model,
                 messages=[
                     {
                         "role": "system",
@@ -185,7 +185,7 @@ User Question:
             return AdvisorResponse(
                 answer=answer,
                 context_summary=combined_context,
-                provider="groq_llama_3.1_fire"
+                provider="groq_gpt_oss_120b_fire"
             )
 
         except Exception as e:

@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     auto_create_tables: bool = Field(default=False, validation_alias="AUTO_CREATE_TABLES")
     groq_api_key: str = Field(default="", validation_alias="GROQ_API_KEY")
+    groq_model: str = Field(default="openai/gpt-oss-120b", validation_alias="GROQ_MODEL")
 
     @property
     def database_url(self) -> str:

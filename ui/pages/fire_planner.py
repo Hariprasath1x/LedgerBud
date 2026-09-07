@@ -716,7 +716,7 @@ st.divider()
 # ─────────────────────────────────────────────────────────────────────────────
 
 st.subheader("🤖 FIRE AI Coach")
-st.caption("Powered by Groq LLaMA 3.1 · Uses your live FIRE data for personalized advice.")
+st.caption("Powered by Groq GPT-OSS 120B · Uses your live FIRE data for personalized advice.")
 
 # Initialize chat history (separate from generic advisor)
 if "fire_coach_messages" not in st.session_state:
