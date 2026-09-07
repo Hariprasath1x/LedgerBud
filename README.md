@@ -44,12 +44,12 @@ A production-ready personal finance platform with AI-powered insights, built on 
 
 | Layer | Technology |
 |-------|-----------|
-| Frontend | Streamlit 1.35+, Plotly |
+| Frontend | Streamlit 1.56.0, Plotly |
 | Backend API | FastAPI 0.109, Uvicorn, Pydantic v2 |
 | Database | PostgreSQL 15 (Docker) / SQLite (local dev) |
 | ORM | SQLAlchemy 2.0 (async-ready, declarative mapped columns) |
 | Auth | JWT (PyJWT + bcrypt), optional Firebase Auth |
-| AI | Groq LLM API (Llama 3) |
+| AI | Groq LLM API (openai/gpt-oss-120b) |
 | Import Engine | pdfplumber, pandas, openpyxl |
 
 ---
@@ -107,6 +107,7 @@ All configuration is managed via environment variables (`.env` file or Docker en
 | `AUTO_CREATE_TABLES` | `true` | Auto-create DB tables on startup |
 | `FASTAPI_BASE_URL` | `http://localhost:8000` | URL Streamlit uses to reach the API |
 | `GROQ_API_KEY` | *(empty)* | Groq API key for AI Advisor & FIRE Coach |
+| `GROQ_MODEL` | `openai/gpt-oss-120b` | Target Groq model for AI services |
 | `USE_FIREBASE` | `false` | Enable Firebase Authentication |
 | `FIREBASE_API_KEY` | *(empty)* | Firebase Web API Key |
 | `FIREBASE_PROJECT_ID` | *(empty)* | Firebase Project ID |
