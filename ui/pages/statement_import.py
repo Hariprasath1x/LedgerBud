@@ -39,7 +39,7 @@ with col_upload:
         )
 
         if uploaded_file is not None:
-            if st.button("Process & Run AI Pipeline", type="primary", use_container_width=True):
+            if st.button("Process & Run AI Pipeline", type="primary", width="stretch"):
                 with st.status("Analyzing file...", expanded=True) as status_indicator:
                     try:
                         status_indicator.write("Uploading file to server...")
@@ -69,8 +69,9 @@ with col_history:
             j_df = pd.DataFrame(jobs)
             j_df = j_df[["id", "original_filename", "status", "total_records", "imported_count", "created_at"]]
             j_df.columns = ["Job ID", "Filename", "Status", "Records Count", "Imported Count", "Date Ingested"]
-            j_df["Date Ingested"] = pd.to_datetime(j_df["Date Ingested"]).dt.strftime("%d %b %Y %H:%M")
-            st.dataframe(j_df, use_container_width=True, hide_index=True)
+            # Safely format date as string without triggering pyarrow datetime SIGSEGV
+            j_df["Date Ingested"] = j_df["Date Ingested"].str.split("T").str[0]
+            st.dataframe(j_df, width="stretch", hide_index=True)
     except Exception as exc:
         render_error_banner(exc, "retrieving import history")
 
@@ -122,18 +123,18 @@ if st.session_state.import_preview:
         st.dataframe(
             df_preview,
             column_config=column_config,
-            use_container_width=True,
+            width="stretch",
             hide_index=True
         )
 
         col_cancel, col_confirm = st.columns(2)
         with col_cancel:
-            if st.button("Discard Ingestion", use_container_width=True):
+            if st.button("Discard Ingestion", width="stretch"):
                 st.session_state.import_preview = None
                 st.rerun()
                 
         with col_confirm:
-            if st.button("Confirm Ingestion to Database", type="primary", use_container_width=True):
+            if st.button("Confirm Ingestion to Database", type="primary", width="stretch"):
                 with st.spinner("Writing statement rows to database..."):
                     try:
                         commit_res = api_client.commit_import(job_id)

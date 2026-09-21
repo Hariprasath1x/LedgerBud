@@ -22,7 +22,7 @@ def show_create_dialog():
         category = st.selectbox("Category", EXPENSE_CATEGORIES)
         amount = st.number_input("Limit Amount (INR)", min_value=1.0, format="%.2f", step=500.0)
         period = st.selectbox("Period", ["monthly", "weekly", "yearly"])
-        submit = st.form_submit_button("Save Budget", use_container_width=True)
+        submit = st.form_submit_button("Save Budget", width="stretch")
 
         if submit:
             if not name:
@@ -50,7 +50,7 @@ def show_edit_dialog(budget):
         amount = st.number_input("Limit Amount (INR)", min_value=1.0, value=float(budget.get("amount", 0.0)), format="%.2f", step=500.0)
         period = st.selectbox("Period", ["monthly", "weekly", "yearly"], index=["monthly", "weekly", "yearly"].index(budget.get("period", "monthly")))
         
-        submit = st.form_submit_button("Update Budget", use_container_width=True)
+        submit = st.form_submit_button("Update Budget", width="stretch")
 
         if submit:
             if not name:
@@ -71,7 +71,7 @@ def show_delete_dialog(budget):
     st.write(f"Are you sure you want to deactivate budget **{budget.get('name')}**?")
     col_yes, col_no = st.columns(2)
     with col_yes:
-        if st.button("Yes, Deactivate", type="primary", use_container_width=True):
+        if st.button("Yes, Deactivate", type="primary", width="stretch"):
             try:
                 api_client.delete_budget(budget.get("id"))
                 st.success("Budget deactivated successfully.")
@@ -79,7 +79,7 @@ def show_delete_dialog(budget):
             except Exception as exc:
                 st.error(f"Failed to deactivate: {exc}")
     with col_no:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.rerun()
 
 
@@ -89,7 +89,7 @@ st.markdown("Set expense limit rules on categories and track execution progress.
 # Action control
 col_act, _ = st.columns([1, 4])
 with col_act:
-    if st.button("➕ Create Budget", use_container_width=True):
+    if st.button("➕ Create Budget", width="stretch"):
         show_create_dialog()
 
 # Retrieve active budgets with utilization details
@@ -151,7 +151,7 @@ else:
 
             with col_actions:
                 st.write("")
-                if st.button("✏️ Edit", key=f"edit_{b.get('id')}", use_container_width=True):
+                if st.button("✏️ Edit", key=f"edit_{b.get('id')}", width="stretch"):
                     show_edit_dialog(b)
-                if st.button("🗑️ Remove", key=f"del_{b.get('id')}", use_container_width=True):
+                if st.button("🗑️ Remove", key=f"del_{b.get('id')}", width="stretch"):
                     show_delete_dialog(b)

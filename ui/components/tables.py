@@ -18,8 +18,7 @@ def render_transactions_table(transactions: list[dict], use_editor: bool = False
     available_cols = [c for c in cols if c in df.columns]
     df = df[available_cols]
 
-    # Convert transaction_date to datetime for proper sorting & display
-    df["transaction_date"] = pd.to_datetime(df["transaction_date"])
+    # Dates are kept as strings which Streamlit DateColumn handles natively
 
     column_config = {
         "id": st.column_config.NumberColumn("ID", disabled=True, format="%d"),
@@ -41,7 +40,7 @@ def render_transactions_table(transactions: list[dict], use_editor: bool = False
         edited_df = st.data_editor(
             df,
             column_config=column_config,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             num_rows="dynamic",
             key=key,
@@ -51,7 +50,7 @@ def render_transactions_table(transactions: list[dict], use_editor: bool = False
         st.dataframe(
             df,
             column_config=column_config,
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
             key=key,
         )
@@ -63,7 +62,7 @@ def render_simple_table(df: pd.DataFrame, column_config: dict | None = None, key
     st.dataframe(
         df,
         column_config=column_config,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         key=key,
     )

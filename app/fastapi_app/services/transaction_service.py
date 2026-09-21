@@ -85,6 +85,11 @@ class TransactionService:
         self.session.commit()
         return True
 
+    def delete_all_transactions(self, user_id: int) -> int:
+        count = self.transactions.delete_all(user_id)
+        self.session.commit()
+        return count
+
     def list_transactions(self, user_id: int, **filters):
         return self.transactions.list_filtered(user_id=user_id, **filters)
 

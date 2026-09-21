@@ -43,7 +43,7 @@ def main():
             
             # If either process dies unexpectedly, we might want to know
             if backend.poll() is not None or frontend.poll() is not None:
-                print("\nOne of the servers has stopped unexpectedly. Shutting down...")
+                print(f"\nOne of the servers has stopped unexpectedly. Backend code: {backend.poll()}, Frontend code: {frontend.poll()}")
                 break
                 
     except KeyboardInterrupt:

@@ -42,8 +42,22 @@ class GoalService:
         goal = self.get_goal(user_id, goal_id)
         if not goal:
             return None
+            
+        old_target = float(goal.target_amount)
+        old_status = goal.status
+        
         for field, value in payload.model_dump(exclude_none=True).items():
             setattr(goal, field, value)
+
+        # Dynamically recalculate status based on amounts
+        new_target = float(goal.target_amount)
+        new_current = float(goal.current_amount)
+        
+        if new_current >= new_target:
+            goal.status = "completed"
+        elif old_status == "completed" and new_target > old_target and new_current < new_target:
+            goal.status = "active"
+
         self.session.commit()
         self.session.refresh(goal)
         return goal
@@ -55,6 +69,8 @@ class GoalService:
         goal.current_amount = float(goal.current_amount) + payload.amount
         if float(goal.current_amount) >= float(goal.target_amount):
             goal.status = "completed"
+        elif goal.status == "completed" and float(goal.current_amount) < float(goal.target_amount):
+            goal.status = "active"
         self.session.commit()
         self.session.refresh(goal)
         return goal

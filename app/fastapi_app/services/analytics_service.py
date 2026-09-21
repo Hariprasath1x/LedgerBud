@@ -118,13 +118,18 @@ class AnalyticsService:
         current_income = self._sum(user_id, "Income")
         current_savings = current_income - current_expense
 
-        new_expense = max(0.0, current_expense - payload.reduce_by)
-        new_savings = current_income - new_expense
+        reduction = payload.reduce_by
+        new_expense = max(0.0, current_expense - reduction)
+        new_savings = current_savings + reduction
         new_savings_rate = (new_savings / current_income * 100) if current_income > 0 else 0.0
-        yearly_savings = new_savings * 12
+        
+        # Calculate Future Value based purely on the newly saved amount from this reduction
+        incremental_yearly = reduction * 12
         r = payload.interest_rate / 100
         n = payload.years
-        investment_value = yearly_savings * ((((1 + r) ** n) - 1) / r) if yearly_savings > 0 and r > 0 else 0.0
+        
+        # Compounding annually with annual contributions
+        investment_value = incremental_yearly * ((((1 + r) ** n) - 1) / r) if incremental_yearly > 0 and r > 0 else 0.0
 
         return WhatIfResponse(
             current_expense=current_expense,
@@ -132,9 +137,9 @@ class AnalyticsService:
             current_savings=current_savings,
             new_savings=new_savings,
             new_savings_rate=round(new_savings_rate, 1),
-            yearly_savings=yearly_savings,
+            yearly_savings=incremental_yearly,
             investment_value=round(investment_value, 2),
-            reduction=payload.reduce_by,
+            reduction=reduction,
             years=payload.years,
             interest_rate=payload.interest_rate,
         )

@@ -19,6 +19,10 @@ venv.bak/
 # Environment variables
 .env
 
+# Firebase credentials
+serviceAccountKey.json
+firebase-adminsdk*.json
+
 # Uploads
 app/static/uploads/
 

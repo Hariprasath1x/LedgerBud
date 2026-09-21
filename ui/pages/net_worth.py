@@ -24,7 +24,7 @@ def show_add_item_dialog():
         amount = st.number_input("Amount (INR)", min_value=0.0, format="%.2f", step=1000.0)
         notes = st.text_input("Notes (Optional)")
         
-        if st.form_submit_button("Save Item", use_container_width=True):
+        if st.form_submit_button("Save Item", width="stretch"):
             if not name:
                 st.error("Name is required.")
             else:
@@ -47,7 +47,7 @@ def show_delete_item_dialog(item):
     st.warning(f"Are you sure you want to remove '{item['name']}'? It will no longer be included in future snapshots.")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Yes, Remove", type="primary", use_container_width=True):
+        if st.button("Yes, Remove", type="primary", width="stretch"):
             try:
                 api_client.delete_net_worth_item(item['id'])
                 st.success("Removed.")
@@ -55,7 +55,7 @@ def show_delete_item_dialog(item):
             except Exception as e:
                 st.error(f"Error: {e}")
     with col2:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.rerun()
 
 
@@ -82,12 +82,12 @@ col_chart, col_act = st.columns([3, 1])
 
 with col_act:
     st.markdown("### Actions")
-    if st.button("➕ Add Asset / Liability", use_container_width=True):
+    if st.button("➕ Add Asset / Liability", width="stretch"):
         show_add_item_dialog()
     
     st.markdown("<br>", unsafe_allow_html=True)
     st.info("Snapshots capture your net worth at a specific point in time to build your historical chart.")
-    if st.button("📸 Take Snapshot Now", use_container_width=True):
+    if st.button("📸 Take Snapshot Now", width="stretch"):
         try:
             api_client.take_net_worth_snapshot()
             st.success("Snapshot saved.")
@@ -111,7 +111,7 @@ with col_chart:
             template="plotly_white"
         )
         fig.update_layout(margin=dict(l=20, r=20, t=40, b=20), height=300)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width="stretch")
 
 st.divider()
 
@@ -133,7 +133,7 @@ with col_asset:
                 st.caption(a['category'])
             with ac2:
                 st.write(f"**{format_currency(a['amount'])}**")
-                if st.button("Delete", key=f"del_a_{a['id']}", use_container_width=True):
+                if st.button("Delete", key=f"del_a_{a['id']}", width="stretch"):
                     show_delete_item_dialog(a)
 
 with col_liab:
@@ -148,5 +148,5 @@ with col_liab:
                 st.caption(L['category'])
             with lc2:
                 st.write(f"**{format_currency(L['amount'])}**")
-                if st.button("Delete", key=f"del_l_{L['id']}", use_container_width=True):
+                if st.button("Delete", key=f"del_l_{L['id']}", width="stretch"):
                     show_delete_item_dialog(L)

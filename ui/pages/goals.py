@@ -17,7 +17,7 @@ def show_create_dialog():
         target_date = st.date_input("Target Date (Optional)", value=None)
         description = st.text_area("Description (Optional)", placeholder="Add context...")
         
-        submit = st.form_submit_button("Save Goal", use_container_width=True)
+        submit = st.form_submit_button("Save Goal", width="stretch")
 
         if submit:
             if not name:
@@ -39,7 +39,7 @@ def show_contribute_dialog(goal):
     with st.form("contribute_goal_form"):
         st.write(f"Add a contribution to **{goal.get('name')}**")
         amount = st.number_input("Contribution Amount (INR)", min_value=1.0, format="%.2f", step=500.0)
-        submit = st.form_submit_button("Save Contribution", use_container_width=True)
+        submit = st.form_submit_button("Save Contribution", width="stretch")
 
         if submit:
             try:
@@ -67,7 +67,7 @@ def show_edit_dialog(goal):
         status = st.selectbox("Status", ["active", "completed", "paused"], index=["active", "completed", "paused"].index(goal.get("status", "active")))
         description = st.text_area("Description", value=goal.get("description") or "")
         
-        submit = st.form_submit_button("Update Goal", use_container_width=True)
+        submit = st.form_submit_button("Update Goal", width="stretch")
 
         if submit:
             if not name:
@@ -77,7 +77,7 @@ def show_edit_dialog(goal):
                     payload = {
                         "name": name,
                         "target_amount": target_amount,
-                        "target_date": str(target_date),
+                        "target_date": str(target_date) if target_date else None,
                         "status": status,
                         "description": description
                     }
@@ -94,7 +94,7 @@ def show_delete_dialog(goal):
     st.write(f"Are you sure you want to delete savings goal **{goal.get('name')}**?")
     col_yes, col_no = st.columns(2)
     with col_yes:
-        if st.button("Yes, Delete", type="primary", use_container_width=True):
+        if st.button("Yes, Delete", type="primary", width="stretch"):
             try:
                 api_client.delete_goal(goal.get("id"))
                 st.success("Deleted successfully.")
@@ -102,7 +102,7 @@ def show_delete_dialog(goal):
             except Exception as exc:
                 st.error(f"Failed to delete: {exc}")
     with col_no:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.rerun()
 
 
@@ -112,7 +112,7 @@ st.markdown("Plan future purchases, construct emergency funds, and monitor savin
 # Action control
 col_act, _ = st.columns([1, 4])
 with col_act:
-    if st.button("➕ Create Goal", use_container_width=True):
+    if st.button("➕ Create Goal", width="stretch"):
         show_create_dialog()
 
 # Retrieve user savings goals
@@ -150,12 +150,17 @@ else:
         pct = float(g.get("progress_percentage", 0.0))
         status = g.get("status", "active")
         t_date = g.get("target_date")
+        norm_pct = min(1.0, pct / 100.0)
 
         with st.container(border=True):
             col_info, col_progress, col_actions = st.columns([3, 2, 1])
 
             with col_info:
-                st.markdown(f"#### **{g.get('name')}**")
+                title_str = f"#### **{g.get('name')}**"
+                if norm_pct >= 1.0 or status == "completed":
+                    title_str += " 💥🎉"
+                st.markdown(title_str)
+                
                 if g.get("description"):
                     st.write(g.get("description"))
                 
@@ -163,7 +168,7 @@ else:
                 st.caption(f"Status: **{status.title()}** | Target Date: {format_date(t_date)}")
                 
                 # Goal Projection Calculation
-                if t_date and status == "active":
+                if t_date and status == "active" and norm_pct < 1.0:
                     from datetime import datetime
                     try:
                         t_date_dt = datetime.strptime(t_date, "%Y-%m-%d").date()
@@ -179,17 +184,19 @@ else:
             with col_progress:
                 st.write(f"Saved: **{format_currency(saved)}** of **{format_currency(target)}**")
                 st.write(f"Remaining: **{format_currency(remaining)}**")
-                # Normalize values
-                norm_pct = min(1.0, pct / 100.0)
                 st.progress(norm_pct)
-                st.caption(f"Goal Completion: **{format_percentage(pct)}**")
+                
+                completion_text = f"Goal Completion: **{format_percentage(pct)}**"
+                if norm_pct >= 1.0 or status == "completed":
+                    completion_text = f"**Goal Achieved!** 💥🚀 {completion_text}"
+                st.caption(completion_text)
 
             with col_actions:
                 st.write("")
                 if status == "active":
-                    if st.button("💰 Contribute", key=f"contrib_{g.get('id')}", use_container_width=True):
+                    if st.button("💰 Contribute", key=f"contrib_{g.get('id')}", width="stretch"):
                         show_contribute_dialog(g)
-                if st.button("✏️ Edit Goal", key=f"edit_{g.get('id')}", use_container_width=True):
+                if st.button("✏️ Edit Goal", key=f"edit_{g.get('id')}", width="stretch"):
                     show_edit_dialog(g)
-                if st.button("🗑️ Delete Goal", key=f"del_{g.get('id')}", use_container_width=True):
+                if st.button("🗑️ Delete Goal", key=f"del_{g.get('id')}", width="stretch"):
                     show_delete_dialog(g)

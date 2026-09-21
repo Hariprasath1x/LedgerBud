@@ -12,13 +12,12 @@ SQLAlchemy==2.0.35
 alembic==1.13.3
 
 # --- Authentication ---
-PyJWT==2.10.1
-bcrypt==4.2.1
 email-validator==2.2.0
 python-multipart==0.0.20
 
 # --- Database Drivers ---
-psycopg2-binary==2.9.9
+psycopg2-binary>=2.9.10
+PyMySQL>=1.1.0
 
 # --- Firebase (optional, enable via USE_FIREBASE=true) ---
 firebase-admin>=6.5.0

@@ -37,7 +37,7 @@ def show_add_dialog(wallets):
         txn_date = st.date_input("Transaction Date", value=date.today())
         notes = st.text_area("Notes (Optional)", placeholder="Add context...")
 
-        submit = st.form_submit_button("Save Transaction", use_container_width=True)
+        submit = st.form_submit_button("Save Transaction", width="stretch")
         if submit:
             if not merchant:
                 st.error("Merchant name is required.")
@@ -95,7 +95,7 @@ def show_edit_dialog(wallets, txn):
         txn_date = st.date_input("Transaction Date", value=default_date)
         notes = st.text_area("Notes", value=txn.get("notes") or "")
 
-        submit = st.form_submit_button("Update Transaction", use_container_width=True)
+        submit = st.form_submit_button("Update Transaction", width="stretch")
         if submit:
             if not merchant:
                 st.error("Merchant name is required.")
@@ -123,7 +123,7 @@ def show_delete_dialog(txn):
     st.write(f"Are you sure you want to delete the transaction of **₹{txn.get('amount'):,.2f}** at **{txn.get('merchant_name')}**?")
     col_yes, col_no = st.columns(2)
     with col_yes:
-        if st.button("Yes, Delete", type="primary", use_container_width=True):
+        if st.button("Yes, Delete", type="primary", width="stretch"):
             try:
                 api_client.delete_transaction(txn.get("id"))
                 st.success("Deleted successfully.")
@@ -131,7 +131,7 @@ def show_delete_dialog(txn):
             except Exception as exc:
                 st.error(f"Failed to delete: {exc}")
     with col_no:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.rerun()
 
 
@@ -166,13 +166,14 @@ transaction_type = type_q if type_q != "All Types" else None
 # Action Controls
 col_add, col_space = st.columns([1, 4])
 with col_add:
-    if st.button("➕ Add Transaction", use_container_width=True):
+    if st.button("➕ Add Transaction", width="stretch"):
         if not wallets:
             st.warning("Please create a wallet first.")
         else:
             show_add_dialog(wallets)
 
 # Fetch transactions
+transactions = []
 try:
     # Set limit high for direct visualization
     res = api_client.list_transactions(
@@ -193,7 +194,9 @@ else:
     # Use interactive selection to edit/delete
     df = pd.DataFrame(transactions)
     df_display = df[["id", "transaction_date", "merchant_name", "category", "transaction_type", "amount", "notes"]].copy()
-    df_display["transaction_date"] = pd.to_datetime(df_display["transaction_date"])
+    
+    for col in ["merchant_name", "category", "transaction_type", "notes"]:
+        df_display[col] = df_display[col].fillna("").astype("string")
     
     # Configure columns nicely
     column_config = {
@@ -209,8 +212,7 @@ else:
     selection = st.dataframe(
         df_display,
         column_config=column_config,
-        use_container_width=True,
-        hide_index=True,
+        width="stretch",
         on_select="rerun",
         selection_mode="single-row"
     )
@@ -225,8 +227,8 @@ else:
         st.write(f"**Selected Action Context: ID #{selected_txn.get('id')}**")
         col_edit, col_del, _ = st.columns([1, 1, 3])
         with col_edit:
-            if st.button("✏️ Edit Selected", use_container_width=True):
+            if st.button("✏️ Edit Selected", width="stretch"):
                 show_edit_dialog(wallets, selected_txn)
         with col_del:
-            if st.button("🗑️ Delete Selected", use_container_width=True):
+            if st.button("🗑️ Delete Selected", width="stretch"):
                 show_delete_dialog(selected_txn)

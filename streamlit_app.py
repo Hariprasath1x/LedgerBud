@@ -1,6 +1,9 @@
 """LedgerBud Entry Point — Multipage Streamlit Application."""
 
 import streamlit as st
+from dotenv import load_dotenv
+load_dotenv()  # Load .env variables
+
 from ui.state import init_session_state, logout_user
 from ui.auth import render_auth_page
 from ui.api_client import api_client
@@ -33,12 +36,12 @@ else:
             if not wallets:
                 st.warning("No wallets registered.")
                 # Popover block to add a wallet
-                with st.popover("➕ Add First Wallet", use_container_width=True):
+                with st.popover("➕ Add First Wallet", width="stretch"):
                     with st.form("sidebar_wallet_form", clear_on_submit=True):
                         w_name = st.text_input("Name", placeholder="e.g. HDFC Salary")
                         w_type = st.selectbox("Type", ["bank", "credit_card", "cash", "digital"])
                         w_bal = st.number_input("Starting Balance", min_value=0.0, format="%.2f")
-                        submit = st.form_submit_button("Save Wallet", use_container_width=True)
+                        submit = st.form_submit_button("Save Wallet", width="stretch")
                         if submit:
                             if not w_name:
                                 st.error("Name is required.")
@@ -73,12 +76,12 @@ else:
                 st.session_state.active_wallet_id = wallet_options[selected_wallet_label]
                 
                 # Button to create a new wallet
-                with st.popover("➕ Add Wallet", use_container_width=True):
+                with st.popover("➕ Add Wallet", width="stretch"):
                     with st.form("sidebar_new_wallet_form", clear_on_submit=True):
                         w_name = st.text_input("Wallet Name", placeholder="e.g. ICICI Savings")
                         w_type = st.selectbox("Type", ["bank", "credit_card", "cash", "digital"])
                         w_bal = st.number_input("Starting Balance (₹)", min_value=0.0, format="%.2f")
-                        submit = st.form_submit_button("Create", use_container_width=True)
+                        submit = st.form_submit_button("Create", width="stretch")
                         if submit:
                             if w_name:
                                 api_client.create_wallet(w_name, w_type, w_bal)
@@ -92,7 +95,7 @@ else:
         st.divider()
         
         # Log out button at bottom of sidebar
-        if st.button("Sign Out of Workspace", type="secondary", use_container_width=True):
+        if st.button("Sign Out of Workspace", type="secondary", width="stretch"):
             logout_user()
             st.rerun()
 

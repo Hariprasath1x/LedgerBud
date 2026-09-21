@@ -60,6 +60,12 @@ def update_transaction(transaction_id: int, payload: TransactionUpdate, current_
     return TransactionRead.model_validate(transaction)
 
 
+@router.delete("/all", status_code=status.HTTP_200_OK)
+def delete_all_transactions(current_user=Depends(get_current_user), session: Session = Depends(get_session)):
+    count = TransactionService(session).delete_all_transactions(current_user.id)
+    return {"message": f"Deleted {count} transactions"}
+
+
 @router.delete("/{transaction_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_transaction(transaction_id: int, current_user=Depends(get_current_user), session: Session = Depends(get_session)):
     deleted = TransactionService(session).delete_transaction(current_user.id, transaction_id)

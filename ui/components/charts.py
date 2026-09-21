@@ -71,7 +71,7 @@ def render_cash_flow_trend(trend_data: list[dict]):
         margin=dict(l=40, r=20, t=60, b=40)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def render_category_pie(category_data: list[dict]):
@@ -104,7 +104,7 @@ def render_category_pie(category_data: list[dict]):
         margin=dict(l=20, r=20, t=50, b=80)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")
 
 
 def render_savings_trend(trend_data: list[dict]):
@@ -141,4 +141,4 @@ def render_savings_trend(trend_data: list[dict]):
         margin=dict(l=40, r=20, t=60, b=40)
     )
 
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width="stretch")

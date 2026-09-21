@@ -55,3 +55,9 @@ class TransactionRepository:
 
     def delete(self, transaction: Transaction) -> None:
         self.session.delete(transaction)
+
+    def delete_all(self, user_id: int) -> int:
+        from sqlalchemy import delete
+        statement = delete(Transaction).where(Transaction.user_id == user_id)
+        result = self.session.execute(statement)
+        return result.rowcount

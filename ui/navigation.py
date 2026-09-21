@@ -24,6 +24,9 @@ def run_navigation():
             st.Page("ui/pages/fire_planner.py", title="FIRE Planner", icon="🔥"),
             st.Page("ui/pages/advisor.py", title="AI Financial Advisor", icon="🤖"),
             st.Page("ui/pages/analytics.py", title="Analytics", icon="📉"),
+        ],
+        "Settings": [
+            st.Page("ui/pages/profile.py", title="User Profile", icon="👤"),
         ]
     }
 

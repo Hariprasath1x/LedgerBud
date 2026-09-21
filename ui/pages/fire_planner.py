@@ -301,7 +301,7 @@ with st.expander("⚙️ FIRE Settings", expanded=True):
     calculate_btn = st.button(
         "🔥 Calculate FIRE",
         type="primary",
-        use_container_width=True,
+        width="stretch",
         key="fire_calculate_btn",
     )
 
@@ -460,7 +460,7 @@ with col_donut:
     st.markdown("##### FIRE Progress")
     st.plotly_chart(
         _donut_chart(fire_progress, 100, "towards Financial Independence", hero_color),
-        use_container_width=True,
+        width="stretch",
         config={"displayModeBar": False},
     )
     st.caption(f"**{_cr(net_worth)}** of **{_cr(target_corpus)}**")
@@ -469,7 +469,7 @@ with col_gauge:
     st.markdown("##### Readiness Score")
     st.plotly_chart(
         _fire_score_gauge(fire_score),
-        use_container_width=True,
+        width="stretch",
         config={"displayModeBar": False},
     )
 
@@ -479,7 +479,7 @@ with col_score_break:
     if any(v > 0 for v in breakdown.values()):
         st.plotly_chart(
             _score_breakdown_chart(breakdown),
-            use_container_width=True,
+            width="stretch",
             config={"displayModeBar": False},
         )
     else:
@@ -500,7 +500,7 @@ projection = result.get("wealth_projection", [])
 if projection:
     st.plotly_chart(
         _wealth_projection_chart(projection, target_corpus),
-        use_container_width=True,
+        width="stretch",
         config={"displayModeBar": False},
     )
 
@@ -517,7 +517,7 @@ if projection:
         proj_df[col] = proj_df[col].apply(lambda v: _cr(v))
 
     with st.expander("View Projection Table", expanded=False):
-        st.dataframe(proj_df, use_container_width=True, hide_index=True)
+        st.dataframe(proj_df, width="stretch", hide_index=True)
 else:
     st.info("No projection data available. Click 'Calculate FIRE' to generate.")
 
@@ -557,7 +557,7 @@ if scenarios:
 
     st.dataframe(
         df.style.apply(highlight_row, axis=1),
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -583,7 +583,7 @@ if scenarios:
             margin=dict(l=10, r=10, t=40, b=10),
             yaxis=dict(gridcolor="#1e293b"),
         )
-        st.plotly_chart(fig_ages, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_ages, width="stretch", config={"displayModeBar": False})
 
     with col_s2:
         sips = [s.get("monthly_investment_required", 0) for s in scenarios]
@@ -603,7 +603,7 @@ if scenarios:
             margin=dict(l=10, r=10, t=40, b=10),
             yaxis=dict(gridcolor="#1e293b"),
         )
-        st.plotly_chart(fig_sip, use_container_width=True, config={"displayModeBar": False})
+        st.plotly_chart(fig_sip, width="stretch", config={"displayModeBar": False})
 
 else:
     st.info("Scenario data will appear after running a FIRE calculation.")
@@ -772,7 +772,7 @@ suggestions = [
 suggestion_cols = st.columns(3)
 for i, suggestion in enumerate(suggestions):
     with suggestion_cols[i % 3]:
-        if st.button(suggestion, key=f"fire_suggestion_{i}", use_container_width=True):
+        if st.button(suggestion, key=f"fire_suggestion_{i}", width="stretch"):
             st.session_state.fire_coach_messages.append({"role": "user", "content": suggestion})
             with st.spinner("FIRE Coach is thinking..."):
                 try:
@@ -857,7 +857,7 @@ with st.expander("📜 FIRE Analysis History", expanded=False):
             if "Monthly SIP" in hist_display.columns:
                 hist_display["Monthly SIP"] = hist_display["Monthly SIP"].apply(lambda v: _cr(float(v)))
 
-            st.dataframe(hist_display, use_container_width=True, hide_index=True)
+            st.dataframe(hist_display, width="stretch", hide_index=True)
 
             # Score trend chart
             if "fire_score" in hist_df.columns and len(hist_df) > 1:
@@ -878,7 +878,7 @@ with st.expander("📜 FIRE Analysis History", expanded=False):
                     height=250,
                     margin=dict(l=10, r=10, t=40, b=10),
                 )
-                st.plotly_chart(fig_hist, use_container_width=True, config={"displayModeBar": False})
+                st.plotly_chart(fig_hist, width="stretch", config={"displayModeBar": False})
 
     except Exception as e:
         st.warning(f"Could not load history: {e}")

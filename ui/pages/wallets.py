@@ -13,7 +13,7 @@ def show_create_wallet_dialog():
         name = st.text_input("Wallet Name", placeholder="e.g. HDFC Checking")
         w_type = st.selectbox("Wallet Type", ["Bank", "Cash", "UPI", "Credit", "Custom"])
         balance = st.number_input("Starting Balance", min_value=0.0, format="%.2f")
-        if st.form_submit_button("Create Wallet", use_container_width=True):
+        if st.form_submit_button("Create Wallet", width="stretch"):
             if not name:
                 st.error("Name is required.")
             else:
@@ -30,7 +30,7 @@ def show_archive_wallet_dialog(wallet):
     st.warning(f"Are you sure you want to archive '{wallet['wallet_name']}'? It will be hidden from the active list but its transactions will be preserved.")
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("Yes, Archive", type="primary", use_container_width=True):
+        if st.button("Yes, Archive", type="primary", width="stretch"):
             try:
                 api_client.archive_wallet(wallet['id'])
                 st.success("Wallet archived.")
@@ -38,7 +38,7 @@ def show_archive_wallet_dialog(wallet):
             except Exception as e:
                 st.error(f"Error: {e}")
     with col2:
-        if st.button("Cancel", use_container_width=True):
+        if st.button("Cancel", width="stretch"):
             st.rerun()
 
 
@@ -59,7 +59,7 @@ def show_transfer_dialog(wallets):
         t_date = st.date_input("Date", value=date.today())
         notes = st.text_area("Notes", placeholder="e.g. Moved to savings")
         
-        if st.form_submit_button("Transfer", use_container_width=True):
+        if st.form_submit_button("Transfer", width="stretch"):
             if wallet_opts[from_w] == wallet_opts[to_w]:
                 st.error("Cannot transfer to the same wallet.")
             elif amount <= 0:
@@ -101,10 +101,10 @@ st.divider()
 
 col_add, col_trans, _ = st.columns([1, 1, 3])
 with col_add:
-    if st.button("➕ Add Wallet", use_container_width=True):
+    if st.button("➕ Add Wallet", width="stretch"):
         show_create_wallet_dialog()
 with col_trans:
-    if st.button("🔄 Transfer Funds", use_container_width=True):
+    if st.button("🔄 Transfer Funds", width="stretch"):
         show_transfer_dialog(wallets)
 
 if not wallets:
@@ -120,5 +120,5 @@ else:
             with col2:
                 st.write(f"**{format_currency(w['balance'])}**")
             with col3:
-                if st.button("Archive", key=f"arch_{w['id']}", use_container_width=True):
+                if st.button("Archive", key=f"arch_{w['id']}", width="stretch"):
                     show_archive_wallet_dialog(w)

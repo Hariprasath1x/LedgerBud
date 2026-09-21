@@ -17,8 +17,12 @@ class UserRepository:
         statement = select(User).where(User.email == email.lower())
         return self.session.scalar(statement)
 
-    def create(self, *, full_name: str, email: str, password_hash: str) -> User:
-        user = User(full_name=full_name.strip(), email=email.lower().strip(), password_hash=password_hash)
+    def get_by_firebase_uid(self, firebase_uid: str) -> User | None:
+        statement = select(User).where(User.firebase_uid == firebase_uid)
+        return self.session.scalar(statement)
+
+    def create(self, *, full_name: str, email: str, firebase_uid: str | None = None, password_hash: str | None = None) -> User:
+        user = User(full_name=full_name.strip(), email=email.lower().strip(), firebase_uid=firebase_uid, password_hash=password_hash)
         self.session.add(user)
         self.session.flush()
         return user

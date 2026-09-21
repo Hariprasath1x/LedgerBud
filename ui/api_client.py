@@ -55,22 +55,14 @@ class APIClient:
 
     # --- AUTH ENDPOINTS ---
 
-    def register(self, email: str, password: str, full_name: str) -> dict:
-        return self._request(
-            "POST",
-            "/auth/register",
-            json={"email": email, "password": password, "full_name": full_name},
-        )
-
-    def login(self, email: str, password: str) -> dict:
-        return self._request(
-            "POST",
-            "/auth/login",
-            json={"email": email, "password": password},
-        )
-
     def get_me(self) -> dict:
         return self._request("GET", "/auth/me")
+
+    def update_name(self, full_name: str) -> dict:
+        return self._request("PUT", "/auth/me/name", json={"full_name": full_name})
+
+    def delete_profile(self) -> None:
+        self._request("DELETE", "/auth/me")
 
     # --- WALLET ENDPOINTS ---
 
@@ -166,6 +158,9 @@ class APIClient:
 
     def delete_transaction(self, transaction_id: int) -> None:
         self._request("DELETE", f"/transactions/{transaction_id}")
+
+    def delete_all_transactions(self) -> dict:
+        return self._request("DELETE", "/transactions/all")
 
     # --- DASHBOARD & INTELLIGENCE ---
 

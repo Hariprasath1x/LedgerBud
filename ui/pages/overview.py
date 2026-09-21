@@ -80,7 +80,7 @@ try:
             m_df["Amount"] = m_df["Amount"].apply(format_currency)
             st.dataframe(
                 m_df,
-                use_container_width=True,
+                width="stretch",
                 hide_index=True
             )
 

@@ -12,7 +12,7 @@ st.markdown("Monitor confirmed recurring expenses and identify potential hidden 
 # Quick controls
 col_scan, _ = st.columns([1, 3])
 with col_scan:
-    if st.button("🔄 Scan for Subscriptions", use_container_width=True, help="Analyze transaction history to detect recurring payments."):
+    if st.button("🔄 Scan for Subscriptions", width="stretch", help="Analyze transaction history to detect recurring payments."):
         with st.spinner("Analyzing transaction patterns..."):
             try:
                 new_subs = api_client.detect_subscriptions()
@@ -62,7 +62,7 @@ else:
     df_conf["Next Bill Date"] = df_conf["Next Bill Date"].apply(format_date)
     df_conf["Frequency"] = df_conf["Frequency"].apply(lambda x: x.title())
     
-    st.dataframe(df_conf, use_container_width=True, hide_index=True)
+    st.dataframe(df_conf, width="stretch", hide_index=True)
 
 st.divider()
 
@@ -99,7 +99,7 @@ else:
 
             with col_actions:
                 st.write("")
-                if st.button("Confirm Sub", key=f"conf_{sub_id}", use_container_width=True, type="primary"):
+                if st.button("Confirm Sub", key=f"conf_{sub_id}", width="stretch", type="primary"):
                     try:
                         api_client.confirm_subscription(sub_id)
                         st.success(f"Confirmed {name}!")
@@ -107,7 +107,7 @@ else:
                     except Exception as exc:
                         render_error_banner(exc, "confirming subscription")
                 
-                if st.button("Dismiss", key=f"dism_{sub_id}", use_container_width=True):
+                if st.button("Dismiss", key=f"dism_{sub_id}", width="stretch"):
                     try:
                         api_client.dismiss_subscription(sub_id)
                         st.success("Dismissed detection.")

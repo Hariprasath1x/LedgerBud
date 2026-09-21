@@ -14,8 +14,16 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 
 from app.fastapi_app.models.merchant import Merchant
-from app.intelligence.merchant_dict import MERCHANT_SEED_DATA
 from app.etl.transformer.normalizer import extract_structured_tokens
+
+MERCHANT_SEED_DATA = {
+    "ZOMATO": {"canonical_name": "Zomato", "category": "Food & Dining"},
+    "SWIGGY": {"canonical_name": "Swiggy", "category": "Food & Dining"},
+    "UBER": {"canonical_name": "Uber", "category": "Transportation"},
+    "AMAZON": {"canonical_name": "Amazon", "category": "Shopping"},
+    "FLIPKART": {"canonical_name": "Flipkart", "category": "Shopping"},
+    "NETFLIX": {"canonical_name": "Netflix", "category": "Entertainment"},
+}
 
 @dataclass
 class RecognitionDecision:

@@ -3,21 +3,21 @@
 from __future__ import annotations
 
 import os
-import tempfile
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.fastapi_app.models.import_job import ImportJob
 from app.fastapi_app.models.transaction import Transaction
-from app.fastapi_app.schemas.import_job import ImportCommitResponse, ImportJobRead, ImportPreviewResponse, ImportPreviewTransaction
+from app.fastapi_app.schemas.import_job import ImportCommitResponse, ImportPreviewResponse, ImportPreviewTransaction
 
 from app.etl.extractor import PDFExtractor, CSVExtractor, XLSXExtractor
 from app.etl.transformer.normalizer import parse_date, parse_amount, clean_description, determine_transaction_type
 from app.etl.transformer.deduplicator import detect_duplicates, NormalizedTransaction
-from app.etl.transformer.merchant_resolver import resolve_merchant
+
 from app.fastapi_app.models.wallet import Wallet
 
 
@@ -322,7 +322,7 @@ class ImportService:
                         # Update stats
                         merchant.total_transactions += 1
                         merchant.total_amount += float(norm.amount)
-                        merchant.last_seen = func.now() if hasattr(func, 'now') else datetime.utcnow()
+                        merchant.last_seen = func.now()
                         merchant_id = merchant.id
                         
                 txn = Transaction(

@@ -19,9 +19,6 @@ class Settings(BaseSettings):
         default="mysql+pymysql://root:password@127.0.0.1:3306/ledgerbud",
         validation_alias="MYSQL_DATABASE_URL",
     )
-    jwt_secret_key: str = Field(default="change-me-in-production", validation_alias="JWT_SECRET_KEY")
-    jwt_algorithm: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
-    access_token_expire_minutes: int = Field(default=60, validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES")
 
     use_firebase: bool = Field(default=False, validation_alias="USE_FIREBASE")
     firebase_api_key: str = Field(default="", validation_alias="FIREBASE_API_KEY")
