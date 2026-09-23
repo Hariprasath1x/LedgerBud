@@ -205,9 +205,27 @@ class PDFExtractor(BaseExtractor):
                 continue
 
             is_date = bool(re.search(r'\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4}|\d{2}\s+\w{3}\s+\d{4}', date_val))
+            
+            debit_val = safe_get(row, 'debit')
+            credit_val = safe_get(row, 'credit')
+            amt_val = safe_get(row, 'amount')
+            bal_val = safe_get(row, 'balance')
+            
+            is_marker = bool(re.search(r'(?:^|/|\s)(UPI/CR|UPI/DR)(?:/|\s|$)', desc_val, re.IGNORECASE))
+            
+            is_clash = False
+            if current_txn:
+                if debit_val and current_txn.debit: is_clash = True
+                if credit_val and current_txn.credit: is_clash = True
+                if amt_val and current_txn.amount: is_clash = True
+                if bal_val and current_txn.balance: is_clash = True
+                
+            is_new_txn = is_date or is_marker or is_clash
 
-            if is_date:
+            if is_new_txn:
                 txn = self._parse_row(row, col_map)
+                if not txn.date and current_txn:
+                    txn.date = current_txn.date  # Inherit date for same-day transactions without explicit date
                 if txn:
                     if current_txn:
                         transactions.append(current_txn)
@@ -217,19 +235,15 @@ class PDFExtractor(BaseExtractor):
                     current_txn.description += f" {desc_val}"
                     current_txn.description = current_txn.description.strip()
                 
-                debit_val = safe_get(row, 'debit')
                 if debit_val and not current_txn.debit:
                     current_txn.debit = debit_val
                     
-                credit_val = safe_get(row, 'credit')
                 if credit_val and not current_txn.credit:
                     current_txn.credit = credit_val
                     
-                amt_val = safe_get(row, 'amount')
                 if amt_val and not current_txn.amount:
                     current_txn.amount = amt_val
                     
-                bal_val = safe_get(row, 'balance')
                 if bal_val:
                     current_txn.balance = bal_val
                     
@@ -351,20 +365,38 @@ class PDFExtractor(BaseExtractor):
                 )
             elif current_txn:
                 amounts = amount_pattern.findall(line)
-                if amounts:
-                    if not current_txn.amount:
-                        current_txn.amount = amounts[0]
-                        if len(amounts) > 1:
+                is_marker = bool(re.search(r'(?:^|/|\s)(UPI/CR|UPI/DR)(?:/|\s|$)', line, re.IGNORECASE))
+                
+                # If we found an amount but current_txn already has one, or if we found a marker,
+                # we should start a new transaction to avoid data loss.
+                if is_marker or (amounts and current_txn.amount):
+                    if current_txn and (current_txn.amount or current_txn.debit or current_txn.credit):
+                        transactions.append(current_txn)
+                    
+                    # Start new transaction inheriting the date
+                    date_str = current_txn.date
+                    desc = amount_pattern.sub('', line).strip()
+                    current_txn = RawTransaction(
+                        date=date_str,
+                        description=desc,
+                        amount=amounts[0] if amounts else None,
+                        balance=amounts[-1] if len(amounts) > 1 else None,
+                    )
+                else:
+                    if amounts:
+                        if not current_txn.amount:
+                            current_txn.amount = amounts[0]
+                            if len(amounts) > 1:
+                                current_txn.balance = amounts[-1]
+                        else:
                             current_txn.balance = amounts[-1]
-                    else:
-                        current_txn.balance = amounts[-1]
 
-                desc_part = amount_pattern.sub('', line).strip()
-                if desc_part:
-                    current_txn.description += f" {desc_part}"
-                    current_txn.description = current_txn.description.strip()
+                    desc_part = amount_pattern.sub('', line).strip()
+                    if desc_part:
+                        current_txn.description += f" {desc_part}"
+                        current_txn.description = current_txn.description.strip()
 
-        if current_txn and (current_txn.amount or current_txn.debit or current_txn.credit):
+        if current_txn and (current_txn.amount or current_txn.debit or current_txn.credit or current_txn.description):
             transactions.append(current_txn)
 
         return transactions

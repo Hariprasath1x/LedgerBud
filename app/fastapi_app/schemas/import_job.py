@@ -31,10 +31,18 @@ class ImportJobRead(BaseModel):
 class ImportPreviewTransaction(BaseModel):
     date: str
     description: str
-    amount: float
+    amount: float | None = None
     transaction_type: str
     merchant_name: str | None = None
     category: str | None = None
+    confidence_score: int | None = None
+    recognition_source: str | None = None
+    type_confidence: int = 0
+    type_source: str = "unknown"
+    merchant_confidence: int = 0
+    merchant_source: str = "unknown"
+    requires_review: bool = False
+    financial_data_status: str = "complete"
     is_duplicate: bool = False
 
 

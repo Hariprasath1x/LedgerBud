@@ -104,19 +104,36 @@ if st.session_state.import_preview:
         st.warning("No valid transactions found in statement.")
     else:
         df_preview = pd.DataFrame(txns)
+        
+        # Ensure optional AI metadata columns exist before slicing to prevent KeyError
+        if "confidence_score" not in df_preview.columns:
+            df_preview["confidence_score"] = 0
+        if "recognition_source" not in df_preview.columns:
+            df_preview["recognition_source"] = "None"
+        if "merchant_name" not in df_preview.columns:
+            df_preview["merchant_name"] = None
+        if "requires_review" not in df_preview.columns:
+            df_preview["requires_review"] = False
+            
+        # Ensure amounts are floats (None becomes NaN which Streamlit handles gracefully)
+        df_preview["amount"] = pd.to_numeric(df_preview["amount"], errors='coerce')
+            
         # Select and format columns
-        df_preview = df_preview[["date", "description", "amount", "transaction_type", "merchant_name", "category", "confidence_score", "recognition_source", "is_duplicate"]]
-        df_preview.columns = ["Date", "Description", "Amount", "Type", "Resolved Merchant", "Resolved Category", "Confidence %", "Recognition Source", "Duplicate?"]
+        df_preview = df_preview[["date", "description", "amount", "transaction_type", "type_confidence", "type_source", "merchant_name", "category", "merchant_confidence", "merchant_source", "requires_review", "is_duplicate"]]
+        df_preview.columns = ["Date", "Description", "Amount", "Type", "Type Conf %", "Type Source", "Resolved Merchant", "Resolved Category", "Merchant Conf %", "Merchant Source", "Requires Review", "Duplicate?"]
         
         column_config = {
             "Date": st.column_config.TextColumn("Date"),
             "Description": st.column_config.TextColumn("Description"),
             "Amount": st.column_config.NumberColumn("Amount (INR)", format="₹%.2f"),
             "Type": st.column_config.TextColumn("Type"),
+            "Type Conf %": st.column_config.ProgressColumn("Type Conf %", min_value=0, max_value=100, format="%d%%"),
+            "Type Source": st.column_config.TextColumn("Type Source"),
             "Resolved Merchant": st.column_config.TextColumn("Resolved Merchant"),
             "Resolved Category": st.column_config.TextColumn("Resolved Category"),
-            "Confidence %": st.column_config.ProgressColumn("Confidence %", min_value=0, max_value=100, format="%d%%"),
-            "Recognition Source": st.column_config.TextColumn("Recognition Source"),
+            "Merchant Conf %": st.column_config.ProgressColumn("Merchant Conf %", min_value=0, max_value=100, format="%d%%"),
+            "Merchant Source": st.column_config.TextColumn("Merchant Source"),
+            "Requires Review": st.column_config.CheckboxColumn("Requires Review", help="Amount is missing or unresolvable"),
             "Duplicate?": st.column_config.CheckboxColumn("Duplicate?"),
         }
         

@@ -15,7 +15,7 @@ from app.fastapi_app.models.transaction import Transaction
 from app.fastapi_app.schemas.import_job import ImportCommitResponse, ImportPreviewResponse, ImportPreviewTransaction
 
 from app.etl.extractor import PDFExtractor, CSVExtractor, XLSXExtractor
-from app.etl.transformer.normalizer import parse_date, parse_amount, clean_description, determine_transaction_type
+from app.etl.transformer.normalizer import parse_date, parse_amount, clean_description
 from app.etl.transformer.deduplicator import detect_duplicates, NormalizedTransaction
 
 from app.fastapi_app.models.wallet import Wallet
@@ -104,10 +104,18 @@ class ImportService:
             ImportPreviewTransaction(
                 date=str(t.get("date", "")),
                 description=t.get("description", ""),
-                amount=float(t.get("amount", 0)),
+                amount=float(t.get("amount")) if t.get("amount") is not None else None,
                 transaction_type=t.get("transaction_type", "Expense"),
                 merchant_name=t.get("merchant_name"),
                 category=t.get("category"),
+                confidence_score=t.get("confidence_score"),
+                recognition_source=t.get("recognition_source"),
+                type_confidence=t.get("type_confidence", 0),
+                type_source=t.get("type_source", "unknown"),
+                merchant_confidence=t.get("merchant_confidence", 0),
+                merchant_source=t.get("merchant_source", "unknown"),
+                requires_review=t.get("requires_review", False),
+                financial_data_status=t.get("financial_data_status", "complete"),
                 is_duplicate=t.get("is_duplicate", False),
             )
             for t in preview_txns
@@ -169,15 +177,30 @@ class ImportService:
                 return ext
         return None
 
-    def _transform_transaction(self, raw_txn, engine) -> NormalizedTransaction | None:
+    def _transform_transaction(self, raw_txn, engine, type_resolver, previous_balance) -> NormalizedTransaction | None:
         parsed_date = parse_date(raw_txn.date)
         if not parsed_date:
             return None
-        txn_type, amount = determine_transaction_type(
-            raw_txn.debit, raw_txn.credit, raw_txn.amount, raw_txn.description
+            
+        current_balance = parse_amount(raw_txn.balance) if raw_txn.balance else None
+            
+        type_res = type_resolver.resolve(
+            raw_description=raw_txn.description,
+            debit_str=raw_txn.debit,
+            credit_str=raw_txn.credit,
+            amount_str=raw_txn.amount,
+            previous_balance=previous_balance,
+            current_balance=current_balance
         )
-        if not amount or amount <= 0:
-            return None
+        
+        if type_res.amount and type_res.amount > 0:
+            final_amount = type_res.amount
+            req_review = False
+            fin_status = "complete"
+        else:
+            final_amount = None
+            req_review = True
+            fin_status = "incomplete"
             
         description = clean_description(raw_txn.description)
         balance = parse_amount(raw_txn.balance) if raw_txn.balance else None
@@ -188,12 +211,18 @@ class ImportService:
         norm = NormalizedTransaction(
             date=parsed_date,
             description=description,
-            amount=amount,
-            type=txn_type,
-            balance_after=balance,
+            amount=final_amount,
+            type=type_res.transaction_type,
+            balance_after=current_balance,
             reference_no=raw_txn.reference_no,
             merchant_name_raw=decision.canonical_name,
             raw_date_str=raw_txn.date or '',
+            type_confidence=type_res.confidence_score,
+            type_source=type_res.resolution_source,
+            merchant_confidence=decision.confidence_score,
+            merchant_source=decision.recognition_source,
+            requires_review=req_review,
+            financial_data_status=fin_status
         )
         # Monkey-patch decision onto NormalizedTransaction for downstream use
         norm.decision = decision
@@ -211,11 +240,14 @@ class ImportService:
         """Extract and transform without saving."""
         from app.etl.transformer.recognition_engine import MerchantRecognitionEngine
         
+        from app.etl.transformer.type_resolver import TransactionTypeResolver
+        
         # Get user_id from job
         job = self.session.scalar(select(ImportJob).where(ImportJob.id == job_id))
         user_id = job.user_id if job else 0
         
         engine = MerchantRecognitionEngine(self.session, user_id)
+        type_resolver = TransactionTypeResolver()
         
         extractor = self._get_extractor(file_path)
         if not extractor:
@@ -224,14 +256,20 @@ class ImportService:
         ext_res = extractor.extract(file_path)
         if not ext_res.success and not ext_res.transactions:
             raise RuntimeError("; ".join(ext_res.errors))
+            
+        from app.etl.transformer.segmenter import segment_transactions
+        ext_res.transactions = segment_transactions(ext_res.transactions)
         
         normalized = []
         failed = 0
+        previous_balance = None
         for raw in ext_res.transactions:
             try:
-                norm = self._transform_transaction(raw, engine)
+                norm = self._transform_transaction(raw, engine, type_resolver, previous_balance)
                 if norm:
                     normalized.append(norm)
+                    if norm.balance_after is not None:
+                        previous_balance = norm.balance_after
                 else:
                     failed += 1
             except Exception as e:
@@ -248,12 +286,18 @@ class ImportService:
                 'date': txn.date.isoformat() if txn.date else '',
                 'description': txn.description,
                 'amount': str(txn.amount),
-                'transaction_type': txn.type.capitalize() if txn.type else 'Expense',
+                'transaction_type': txn.type.capitalize() if txn.type else 'Unknown',
                 'merchant_name': txn.decision.canonical_name if hasattr(txn, 'decision') else txn.merchant_name_raw,
                 'category': txn.decision.category if hasattr(txn, 'decision') else None,
                 'is_duplicate': False,
                 'confidence_score': txn.decision.confidence_score if hasattr(txn, 'decision') else None,
                 'recognition_source': txn.decision.recognition_source if hasattr(txn, 'decision') else None,
+                'type_confidence': txn.type_confidence,
+                'type_source': txn.type_source,
+                'merchant_confidence': txn.merchant_confidence,
+                'merchant_source': txn.merchant_source,
+                'requires_review': txn.requires_review,
+                'financial_data_status': txn.financial_data_status,
             })
             
         return {
@@ -270,9 +314,11 @@ class ImportService:
     def _run_etl_commit(self, file_path: str, job_id: int, wallet_id: int, user_id: int) -> dict:
         """Extract, transform, and load unique transactions to database."""
         from app.etl.transformer.recognition_engine import MerchantRecognitionEngine
+        from app.etl.transformer.type_resolver import TransactionTypeResolver
         from app.fastapi_app.models.merchant import Merchant
         
         engine = MerchantRecognitionEngine(self.session, user_id)
+        type_resolver = TransactionTypeResolver()
         
         extractor = self._get_extractor(file_path)
         if not extractor:
@@ -280,12 +326,18 @@ class ImportService:
             
         ext_res = extractor.extract(file_path)
         
+        from app.etl.transformer.segmenter import segment_transactions
+        ext_res.transactions = segment_transactions(ext_res.transactions)
+        
         normalized = []
+        previous_balance = None
         for raw in ext_res.transactions:
             try:
-                norm = self._transform_transaction(raw, engine)
+                norm = self._transform_transaction(raw, engine, type_resolver, previous_balance)
                 if norm:
                     normalized.append(norm)
+                    if norm.balance_after is not None:
+                        previous_balance = norm.balance_after
             except Exception:
                 pass
                 

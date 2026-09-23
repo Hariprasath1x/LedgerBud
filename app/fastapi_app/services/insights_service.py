@@ -23,7 +23,7 @@ class InsightsService:
         today = date.today()
 
         # 1. Gather context
-        summary = self.analytics.get_summary(user_id)
+        summary = self.dashboard.get_summary(user_id)
         current_cats = self.analytics.get_category_breakdown(user_id, today.year, today.month)
         
         prev_month = self.analytics._shift_month(today, 1)
@@ -32,10 +32,10 @@ class InsightsService:
         budgets = self.budgets.list_budgets(user_id)
         subs = self.subscriptions.list_subscriptions(user_id, confirmed_only=True)
         
-        trends = summary.trends
+        trends = self.dashboard.get_monthly_trends(user_id, months=3)
 
         # 2. Rule: Zero Income Month (High)
-        if trends and trends[-1].income <= 0 and trends[-1].expense > 0:
+        if summary.total_income <= 0 and summary.total_expense > 0:
             insights.append(
                 InsightItem(
                     type="zero_income",

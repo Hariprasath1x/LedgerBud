@@ -23,8 +23,9 @@ class DashboardService:
         self.session = session
 
     def get_summary(self, user_id: int) -> DashboardSummary:
-        income = self._sum_transactions(user_id, "Income")
-        expense = self._sum_transactions(user_id, "Expense")
+        today = date.today()
+        income = self._sum_transactions(user_id, "Income", today.year, today.month)
+        expense = self._sum_transactions(user_id, "Expense", today.year, today.month)
         wallet_balance = float(
             self.session.scalar(
                 select(func.coalesce(func.sum(Wallet.balance), 0)).where(Wallet.user_id == user_id)
@@ -69,7 +70,7 @@ class DashboardService:
             select(Transaction.category, func.count(Transaction.id).label("count"), func.sum(Transaction.amount).label("amount"))
             .where(
                 Transaction.user_id == user_id,
-                Transaction.transaction_type == "Expense",
+                Transaction.transaction_type.in_(["Expense", "Debit"]),
                 Transaction.transaction_date >= start,
                 Transaction.transaction_date <= end,
                 or_(Transaction.is_transfer == False, Transaction.is_transfer == None),
@@ -98,7 +99,7 @@ class DashboardService:
             select(Transaction.merchant_name, func.sum(Transaction.amount).label("amount"), func.count(Transaction.id).label("count"))
             .where(
                 Transaction.user_id == user_id, 
-                Transaction.transaction_type == "Expense",
+                Transaction.transaction_type.in_(["Expense", "Debit"]),
                 or_(Transaction.is_transfer == False, Transaction.is_transfer == None),
             )
             .group_by(Transaction.merchant_name)
@@ -273,10 +274,12 @@ class DashboardService:
         ]
 
     def _sum_transactions(self, user_id: int, transaction_type: str, year: int | None = None, month: int | None = None) -> float:
+        type_filters = ["Income", "Credit"] if transaction_type == "Income" else ["Expense", "Debit"]
+        
         from sqlalchemy import or_
         statement = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
             Transaction.user_id == user_id,
-            Transaction.transaction_type == transaction_type,
+            Transaction.transaction_type.in_(type_filters),
             or_(Transaction.is_transfer == False, Transaction.is_transfer == None),
         )
         if year and month:

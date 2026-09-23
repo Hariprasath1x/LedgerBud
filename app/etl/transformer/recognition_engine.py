@@ -16,14 +16,14 @@ from sqlalchemy import select
 from app.fastapi_app.models.merchant import Merchant
 from app.etl.transformer.normalizer import extract_structured_tokens
 
-MERCHANT_SEED_DATA = {
-    "ZOMATO": {"canonical_name": "Zomato", "category": "Food & Dining"},
-    "SWIGGY": {"canonical_name": "Swiggy", "category": "Food & Dining"},
-    "UBER": {"canonical_name": "Uber", "category": "Transportation"},
-    "AMAZON": {"canonical_name": "Amazon", "category": "Shopping"},
-    "FLIPKART": {"canonical_name": "Flipkart", "category": "Shopping"},
-    "NETFLIX": {"canonical_name": "Netflix", "category": "Entertainment"},
-}
+MERCHANT_SEED_DATA = [
+    ("Zomato", "Food & Dining", ["zomato", "zomato online"]),
+    ("Swiggy", "Food & Dining", ["swiggy", "swiggy instamart"]),
+    ("Uber", "Transportation", ["uber", "uber trips"]),
+    ("Amazon", "Shopping", ["amazon", "amazon pay", "amzn"]),
+    ("Flipkart", "Shopping", ["flipkart", "flipkart payment"]),
+    ("Netflix", "Entertainment", ["netflix", "netflix.com"]),
+]
 
 @dataclass
 class RecognitionDecision:

@@ -57,7 +57,7 @@ class AnalyticsService:
             )
             .where(
                 Transaction.user_id == user_id,
-                Transaction.transaction_type == "Expense",
+                Transaction.transaction_type.in_(["Expense", "Debit"]),
                 Transaction.transaction_date >= start,
                 Transaction.transaction_date <= end,
                 or_(Transaction.is_transfer == False, Transaction.is_transfer == None),
@@ -89,7 +89,7 @@ class AnalyticsService:
             )
             .where(
                 Transaction.user_id == user_id,
-                Transaction.transaction_type == "Expense",
+                Transaction.transaction_type.in_(["Expense", "Debit"]),
                 Transaction.transaction_date >= start,
                 Transaction.transaction_date <= end,
                 or_(Transaction.is_transfer == False, Transaction.is_transfer == None),
@@ -147,10 +147,12 @@ class AnalyticsService:
     # --- helpers ---
 
     def _sum(self, user_id: int, txn_type: str, year: int | None = None, month: int | None = None) -> float:
+        type_filters = ["Income", "Credit"] if txn_type == "Income" else ["Expense", "Debit"]
+        
         from sqlalchemy import or_
         stmt = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
             Transaction.user_id == user_id,
-            Transaction.transaction_type == txn_type,
+            Transaction.transaction_type.in_(type_filters),
             or_(Transaction.is_transfer == False, Transaction.is_transfer == None),
         )
         if year and month:

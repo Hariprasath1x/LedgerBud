@@ -38,7 +38,12 @@ class TransactionRepository:
         if category:
             statement = statement.where(Transaction.category == category)
         if transaction_type:
-            statement = statement.where(Transaction.transaction_type == transaction_type)
+            if transaction_type == "Expense":
+                statement = statement.where(Transaction.transaction_type.in_(["Expense", "Debit"]))
+            elif transaction_type == "Income":
+                statement = statement.where(Transaction.transaction_type.in_(["Income", "Credit"]))
+            else:
+                statement = statement.where(Transaction.transaction_type == transaction_type)
         if search:
             statement = statement.where(Transaction.merchant_name.ilike(f"%{search}%"))
         if is_transfer is not None:

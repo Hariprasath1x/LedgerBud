@@ -16,12 +16,18 @@ class NormalizedTransaction:
     """A partially normalized transaction ready for deduplication."""
     date: Optional[date]
     description: str
-    amount: Decimal
+    amount: Optional[Decimal]
     type: str  # debit / credit
     balance_after: Optional[Decimal]
     reference_no: Optional[str]
     merchant_name_raw: str
     raw_date_str: str
+    type_confidence: int = 0
+    type_source: str = "unknown"
+    merchant_confidence: int = 0
+    merchant_source: str = "unknown"
+    requires_review: bool = False
+    financial_data_status: str = "complete"
 
 
 def detect_duplicates(

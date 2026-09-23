@@ -103,26 +103,3 @@ def clean_description(desc: str) -> str:
     return desc
 
 
-def determine_transaction_type(debit: str, credit: str, amount: str, description: str) -> tuple:
-    """
-    Determine if a transaction is debit or credit, and resolve the final amount.
-    Returns (type, amount_decimal)
-    """
-    debit_amount = parse_amount(debit) if debit else None
-    credit_amount = parse_amount(credit) if credit else None
-    generic_amount = parse_amount(amount) if amount else None
-
-    # Check description for Cr/Dr suffix
-    desc_lower = (description or '').lower()
-
-    if debit_amount and debit_amount > 0:
-        return 'debit', debit_amount
-    elif credit_amount and credit_amount > 0:
-        return 'credit', credit_amount
-    elif generic_amount and generic_amount > 0:
-        # Try to determine from description
-        if desc_lower.endswith('cr') or 'credited' in desc_lower or 'salary' in desc_lower or 'interest' in desc_lower:
-            return 'credit', generic_amount
-        return 'debit', generic_amount
-
-    return 'debit', Decimal('0.00')

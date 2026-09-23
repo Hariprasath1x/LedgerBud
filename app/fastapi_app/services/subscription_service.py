@@ -83,7 +83,7 @@ class SubscriptionService:
         transactions = self.session.scalars(
             select(Transaction).where(
                 Transaction.user_id == user_id,
-                Transaction.transaction_type == "Expense",
+                Transaction.transaction_type.in_(["Expense", "Debit"]),
                 Transaction.transaction_date >= cutoff,
             )
         ).all()
