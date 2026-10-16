@@ -3,7 +3,7 @@
 import streamlit as st
 import pandas as pd
 from ui.api_client import api_client
-from ui.formatters import format_currency, format_date
+from ui.formatters import format_date
 from ui.components.error_banner import render_error_banner
 
 st.title("AI Financial Intelligence Pipeline")
@@ -106,14 +106,23 @@ if st.session_state.import_preview:
         df_preview = pd.DataFrame(txns)
         
         # Ensure optional AI metadata columns exist before slicing to prevent KeyError
-        if "confidence_score" not in df_preview.columns:
-            df_preview["confidence_score"] = 0
-        if "recognition_source" not in df_preview.columns:
-            df_preview["recognition_source"] = "None"
-        if "merchant_name" not in df_preview.columns:
-            df_preview["merchant_name"] = None
-        if "requires_review" not in df_preview.columns:
-            df_preview["requires_review"] = False
+        expected_cols = {
+            "date": None,
+            "description": "",
+            "amount": 0.0,
+            "transaction_type": "Debit",
+            "type_confidence": 0,
+            "type_source": "None",
+            "merchant_name": None,
+            "category": "General",
+            "merchant_confidence": 0,
+            "merchant_source": "None",
+            "requires_review": False,
+            "is_duplicate": False
+        }
+        for col_k, col_v in expected_cols.items():
+            if col_k not in df_preview.columns:
+                df_preview[col_k] = col_v
             
         # Ensure amounts are floats (None becomes NaN which Streamlit handles gracefully)
         df_preview["amount"] = pd.to_numeric(df_preview["amount"], errors='coerce')

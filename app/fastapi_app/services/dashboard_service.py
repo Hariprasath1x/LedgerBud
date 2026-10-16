@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from sqlalchemy import Select, func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.fastapi_app.models.transaction import Transaction
@@ -65,7 +65,6 @@ class DashboardService:
         month = month or today.month
         start, end = self._month_range(year, month)
 
-        from sqlalchemy import or_
         statement = (
             select(Transaction.category, func.count(Transaction.id).label("count"), func.sum(Transaction.amount).label("amount"))
             .where(
@@ -94,7 +93,6 @@ class DashboardService:
         return categories
 
     def get_top_merchants(self, user_id: int, limit: int = 5) -> list[dict[str, float | int | str]]:
-        from sqlalchemy import or_
         statement = (
             select(Transaction.merchant_name, func.sum(Transaction.amount).label("amount"), func.count(Transaction.id).label("count"))
             .where(
@@ -251,7 +249,6 @@ class DashboardService:
         }
 
     def _transaction_records(self, user_id: int) -> list[dict[str, object]]:
-        from sqlalchemy import or_
         statement = select(
             Transaction.amount,
             Transaction.transaction_date,
@@ -276,7 +273,6 @@ class DashboardService:
     def _sum_transactions(self, user_id: int, transaction_type: str, year: int | None = None, month: int | None = None) -> float:
         type_filters = ["Income", "Credit"] if transaction_type == "Income" else ["Expense", "Debit"]
         
-        from sqlalchemy import or_
         statement = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
             Transaction.user_id == user_id,
             Transaction.transaction_type.in_(type_filters),

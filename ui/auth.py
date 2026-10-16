@@ -50,30 +50,52 @@ def render_auth_page():
                     else:
                         try:
                             # 1. Authenticate with Firebase
-                            fb_res = firebase_auth_request(
-                                "accounts:signInWithPassword",
-                                {
-                                    "email": email,
-                                    "password": password,
-                                    "returnSecureToken": True
-                                }
-                            )
-                            access_token = fb_res["idToken"]
-                            
-                            # 2. Store token temporarily in session state to retrieve user info
-                            st.session_state.token = access_token
-                            
-                            # 3. Retrieve/auto-provision user profile info from FastAPI backend
-                            user_info = api_client.get_me()
-                            
-                            # Complete login setup
-                            login_user(access_token, user_info)
-                            st.success(f"Welcome back, {user_info['full_name']}!")
-                            st.rerun()
+                            with st.spinner("Authenticating with LedgerBud security..."):
+                                fb_res = firebase_auth_request(
+                                    "accounts:signInWithPassword",
+                                    {
+                                        "email": email.strip(),
+                                        "password": password,
+                                        "returnSecureToken": True
+                                    }
+                                )
+                                access_token = fb_res["idToken"]
+                                
+                                # 2. Store token temporarily in session state to retrieve user info
+                                st.session_state.token = access_token
+                                
+                                # 3. Retrieve/auto-provision user profile info from FastAPI backend
+                                user_info = api_client.get_me()
+                                
+                                # Complete login setup
+                                login_user(access_token, user_info)
+                                
+                                # Persist session in browser cookie for seamless page reload
+                                st.components.v1.html(
+                                    f"""<script>
+                                    document.cookie = "lb_session_token={access_token}; path=/; max-age=604800; SameSite=Lax";
+                                    </script>""",
+                                    height=0
+                                )
+                                
+                            st.success(f"Welcome back, {user_info.get('full_name', 'User')}!")
+                            st.query_params.clear()
+                            try:
+                                st.switch_page("ui/pages/overview.py")
+                            except Exception:
+                                st.rerun()
                         except ValueError as exc:
                             st.error(str(exc))
                         except Exception as exc:
-                            st.error(f"Authentication failed: {exc}")
+                            err_msg = str(exc)
+                            if any(k in err_msg for k in ("INVALID_LOGIN_CREDENTIALS", "INVALID_PASSWORD", "EMAIL_NOT_FOUND")):
+                                st.error("Invalid email or password. Please check your credentials or reset your password.")
+                            elif "USER_DISABLED" in err_msg:
+                                st.error("This user account has been disabled. Please contact support.")
+                            elif "TOO_MANY_ATTEMPTS_TRY_LATER" in err_msg:
+                                st.error("Too many unsuccessful attempts. Access temporarily blocked. Please reset your password or try again later.")
+                            else:
+                                st.error(f"Authentication failed: {err_msg}")
 
         with tab_register:
             st.write("Start building structure and trust in your finances.")
@@ -94,48 +116,63 @@ def render_auth_page():
                     else:
                         try:
                             # 1. Register with Firebase
-                            # Note: Firebase Auth REST API doesn't take display_name on signup,
-                            # so we pass it later or let backend auto-provision grab the name from email
-                            fb_res = firebase_auth_request(
-                                "accounts:signUp",
-                                {
-                                    "email": email,
-                                    "password": password,
-                                    "returnSecureToken": True
-                                }
-                            )
-                            access_token = fb_res["idToken"]
-                            
-                            # 2. Store token temporarily in session state
-                            st.session_state.token = access_token
-                            
-                            # Update profile with full name (optional, but good practice)
-                            try:
-                                firebase_auth_request(
-                                    "accounts:update",
+                            with st.spinner("Creating your workspace..."):
+                                fb_res = firebase_auth_request(
+                                    "accounts:signUp",
                                     {
-                                        "idToken": access_token,
-                                        "displayName": full_name,
+                                        "email": email.strip(),
+                                        "password": password,
                                         "returnSecureToken": True
                                     }
                                 )
-                            except Exception:
-                                pass # Ignore if it fails, backend will fallback to email
-                            
-                            # 3. Retrieve user profile info from FastAPI backend (auto-provisions)
-                            user_info = api_client.get_me()
-                            
-                            # Complete registration login setup
-                            login_user(access_token, user_info)
+                                access_token = fb_res["idToken"]
+                                
+                                # 2. Store token temporarily in session state
+                                st.session_state.token = access_token
+                                
+                                # Update profile with full name
+                                try:
+                                    firebase_auth_request(
+                                        "accounts:update",
+                                        {
+                                            "idToken": access_token,
+                                            "displayName": full_name.strip(),
+                                            "returnSecureToken": True
+                                        }
+                                    )
+                                except Exception:
+                                    pass
+                                
+                                # 3. Retrieve user profile info from FastAPI backend (auto-provisions)
+                                user_info = api_client.get_me()
+                                
+                                # Complete registration login setup
+                                login_user(access_token, user_info)
+                                
+                                # Persist session in browser cookie for seamless page reload
+                                st.components.v1.html(
+                                    f"""<script>
+                                    document.cookie = "lb_session_token={access_token}; path=/; max-age=604800; SameSite=Lax";
+                                    </script>""",
+                                    height=0
+                                )
+                                
                             st.success("Account successfully created!")
-                            st.rerun()
+                            st.query_params.clear()
+                            try:
+                                st.switch_page("ui/pages/overview.py")
+                            except Exception:
+                                st.rerun()
                         except ValueError as exc:
                             st.error(str(exc))
                         except Exception as exc:
                             err_msg = str(exc)
                             if "EMAIL_EXISTS" in err_msg:
-                                err_msg = "An account with this email already exists."
-                            st.error(f"Registration failed: {err_msg}")
+                                st.error("An account with this email already exists. Please sign in instead.")
+                            elif "WEAK_PASSWORD" in err_msg:
+                                st.error("Password is too weak. Please choose a stronger password.")
+                            else:
+                                st.error(f"Registration failed: {err_msg}")
 
         with tab_reset:
             st.write("Reset your password via email.")

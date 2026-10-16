@@ -1,12 +1,10 @@
 import sys
-from decimal import Decimal
 
 sys.path.insert(0, '.')
 
 from dotenv import load_dotenv
 load_dotenv()
 
-from app.etl.extractor.base import RawTransaction
 from app.fastapi_app.services.import_service import ImportService
 from app.fastapi_app.models.user import User
 from app.fastapi_app.models.wallet import Wallet

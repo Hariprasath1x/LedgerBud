@@ -4,7 +4,6 @@ import streamlit as st
 import pandas as pd
 from datetime import date
 from ui.api_client import api_client
-from ui.components.tables import render_transactions_table
 from ui.components.error_banner import render_error_banner
 
 # Standard categories for form selection

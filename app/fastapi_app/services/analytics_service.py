@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.fastapi_app.models.transaction import Transaction
@@ -48,7 +48,6 @@ class AnalyticsService:
         month = month or today.month
         start, end = self._month_range(year, month)
 
-        from sqlalchemy import or_
         rows = self.session.execute(
             select(
                 Transaction.category,
@@ -80,7 +79,6 @@ class AnalyticsService:
     def get_top_merchants(self, user_id: int, limit: int = 10) -> list[MerchantPoint]:
         today = date.today()
         start, end = self._month_range(today.year, today.month)
-        from sqlalchemy import or_
         rows = self.session.execute(
             select(
                 Transaction.merchant_name,
@@ -149,7 +147,6 @@ class AnalyticsService:
     def _sum(self, user_id: int, txn_type: str, year: int | None = None, month: int | None = None) -> float:
         type_filters = ["Income", "Credit"] if txn_type == "Income" else ["Expense", "Debit"]
         
-        from sqlalchemy import or_
         stmt = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
             Transaction.user_id == user_id,
             Transaction.transaction_type.in_(type_filters),

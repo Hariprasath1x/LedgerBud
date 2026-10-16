@@ -1,6 +1,4 @@
 import sys
-import os
-import json
 sys.path.insert(0, '.')
 from dotenv import load_dotenv
 load_dotenv()

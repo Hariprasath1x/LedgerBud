@@ -1,7 +1,7 @@
 """Savings Goals Workspace — LedgerBud."""
 
 import streamlit as st
-from datetime import date
+from datetime import date, datetime
 from ui.api_client import api_client
 from ui.formatters import format_currency, format_percentage, format_date
 from ui.components.error_banner import render_error_banner
@@ -57,7 +57,6 @@ def show_edit_dialog(goal):
         name = st.text_input("Goal Name", value=goal.get("name", ""))
         target_amount = st.number_input("Target Amount (INR)", min_value=100.0, value=float(goal.get("target_amount", 0.0)), format="%.2f", step=1000.0)
         
-        from datetime import datetime
         try:
             default_date = datetime.strptime(goal.get("target_date", ""), "%Y-%m-%d").date()
         except Exception:
@@ -169,7 +168,6 @@ else:
                 
                 # Goal Projection Calculation
                 if t_date and status == "active" and norm_pct < 1.0:
-                    from datetime import datetime
                     try:
                         t_date_dt = datetime.strptime(t_date, "%Y-%m-%d").date()
                         days_left = (t_date_dt - date.today()).days

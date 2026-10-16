@@ -1,7 +1,6 @@
 """Wallet Management Workspace — LedgerBud."""
 
 import streamlit as st
-import pandas as pd
 from ui.api_client import api_client
 from ui.components.error_banner import render_error_banner
 from ui.formatters import format_currency

@@ -1,0 +1,1 @@
+"""LedgerBud application package."""

@@ -5,6 +5,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
+from ui.formatters import format_month
+
 # Classic financial intelligence palette
 COLORS = {
     "income": "#2b8a3e",       # Calm dark green
@@ -25,7 +27,6 @@ def render_cash_flow_trend(trend_data: list[dict]):
 
     df = pd.DataFrame(trend_data)
     # Parse month to human readable
-    from ui.formatters import format_month
     df["Month Display"] = df["month"].apply(format_month)
 
     fig = go.Figure()
@@ -114,7 +115,6 @@ def render_savings_trend(trend_data: list[dict]):
         return
 
     df = pd.DataFrame(trend_data)
-    from ui.formatters import format_month
     df["Month Display"] = df["month"].apply(format_month)
 
     fig = go.Figure()

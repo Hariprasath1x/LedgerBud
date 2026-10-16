@@ -1,7 +1,6 @@
 """Analytics and What-If Wealth Simulator — LedgerBud."""
 
 import streamlit as st
-import pandas as pd
 from ui.api_client import api_client
 from ui.components.charts import render_cash_flow_trend, render_savings_trend
 from ui.components.error_banner import render_error_banner

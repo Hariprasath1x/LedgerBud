@@ -1,6 +1,5 @@
 import sys
 from datetime import date, timedelta
-from decimal import Decimal
 
 sys.path.insert(0, '.')
 from sqlalchemy import create_engine
@@ -11,7 +10,6 @@ from app.fastapi_app.models.user import User
 from app.fastapi_app.models.wallet import Wallet
 from app.fastapi_app.models.transaction import Transaction
 from app.fastapi_app.services.advisor_context_service import AdvisorContextService
-from app.fastapi_app.services.dashboard_service import DashboardService
 
 def setup_db():
     engine = create_engine("sqlite:///:memory:", echo=False)

@@ -1,6 +1,6 @@
 """Net worth service."""
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from datetime import date
 from collections import defaultdict

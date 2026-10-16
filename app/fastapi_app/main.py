@@ -73,9 +73,24 @@ def create_app() -> FastAPI:
     app.include_router(advisor_router, prefix=settings.api_v1_prefix)
     app.include_router(fire_router, prefix=settings.api_v1_prefix)
 
+    from pathlib import Path
+    from fastapi.responses import HTMLResponse, RedirectResponse
+
+    welcome_html_path = Path(__file__).resolve().parent.parent.parent / "ui" / "pages" / "ledgerbud-welcome-page.html"
+
+    @app.get("/welcome", response_class=HTMLResponse, tags=["Meta"])
+    def welcome_page() -> HTMLResponse:
+        if welcome_html_path.exists():
+            return HTMLResponse(content=welcome_html_path.read_text(encoding="utf-8"))
+        return HTMLResponse(content="<h1>Welcome to LedgerBud</h1><p><a href='/app'>Open Workspace</a></p>")
+
+    @app.get("/app", tags=["Meta"])
+    def redirect_to_app() -> RedirectResponse:
+        return RedirectResponse("http://localhost:8501")
+
     @app.get("/", tags=["Meta"])
     def root() -> dict[str, str]:
-        return {"service": settings.app_name, "status": "running", "docs": "/docs"}
+        return {"service": settings.app_name, "status": "running", "docs": "/docs", "welcome": "/welcome"}
 
     return app
 

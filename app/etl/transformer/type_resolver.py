@@ -1,7 +1,7 @@
 import re
 from decimal import Decimal
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
 import logging
 
 logger = logging.getLogger(__name__)

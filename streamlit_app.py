@@ -9,6 +9,8 @@ from ui.auth import render_auth_page
 from ui.api_client import api_client
 from ui.components.error_banner import render_error_banner
 
+from ui.navigation import get_navigation
+
 # Global app layout configurations
 st.set_page_config(
     page_title="LedgerBud Workspace",
@@ -17,16 +19,18 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize global session variables
+# Initialize global session variables and attempt session restoration from cookies
 init_session_state()
 
-if not st.session_state.authenticated:
-    render_auth_page()
-else:
+# Build the navigation router based on auth state
+pg = get_navigation()
+
+if st.session_state.get("authenticated", False):
     # Sidebar global context controls
     with st.sidebar:
+        user_name = (st.session_state.get("user") or {}).get("full_name", "User")
         st.markdown("### 💼 **LedgerBud Workspace**")
-        st.caption(f"Connected: **{st.session_state.user.get('full_name')}**")
+        st.caption(f"Connected: **{user_name}**")
         
         st.divider()
         
@@ -97,8 +101,14 @@ else:
         # Log out button at bottom of sidebar
         if st.button("Sign Out of Workspace", type="secondary", width="stretch"):
             logout_user()
+            st.query_params.clear()
+            st.components.v1.html(
+                """<script>
+                document.cookie = "lb_session_token=; path=/; max-age=0; SameSite=Lax";
+                </script>""",
+                height=0
+            )
             st.rerun()
 
-    # Launch page routing
-    from ui.navigation import run_navigation
-    run_navigation()
+# Execute page routing for current view (unauthenticated or authenticated)
+pg.run()

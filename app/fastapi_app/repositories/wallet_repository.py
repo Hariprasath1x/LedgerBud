@@ -3,7 +3,6 @@
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.fastapi_app.models.transaction import Transaction
 from app.fastapi_app.models.wallet import Wallet
 
 

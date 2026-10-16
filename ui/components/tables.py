@@ -2,7 +2,6 @@
 
 import pandas as pd
 import streamlit as st
-from ui.formatters import format_currency
 
 
 def render_transactions_table(transactions: list[dict], use_editor: bool = False, key: str = "txn_tbl"):

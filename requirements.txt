@@ -4,12 +4,15 @@
 # ──────────────────────────────────────────────
 
 # --- Backend (FastAPI) ---
-fastapi==0.109.2
+fastapi>=0.111.0
 uvicorn[standard]==0.32.1
 pydantic==2.10.4
 pydantic-settings==2.6.1
 SQLAlchemy==2.0.35
 alembic==1.13.3
+
+# --- Testing ---
+pytest>=8.0.0
 
 # --- Authentication ---
 email-validator==2.2.0

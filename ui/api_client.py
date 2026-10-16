@@ -22,10 +22,14 @@ class APIClient:
     def _handle_response(self, response: httpx.Response):
         """Parse response and handle common HTTP error codes."""
         if response.status_code == 401:
-            # Session expired / unauthorized — trigger logout
+            # Session expired / unauthorized — trigger logout and navigate cleanly to sign in
             from ui.state import logout_user
             logout_user()
-            st.rerun()
+            st.query_params["auth"] = "true"
+            try:
+                st.switch_page("ui/pages/auth_page.py")
+            except Exception:
+                st.rerun()
 
         if response.is_error:
             try:

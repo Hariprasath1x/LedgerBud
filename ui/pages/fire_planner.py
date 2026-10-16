@@ -9,7 +9,7 @@ import pandas as pd
 
 from ui.api_client import api_client
 from ui.components.error_banner import render_error_banner
-from ui.formatters import format_currency, format_percentage
+from ui.formatters import format_currency
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -251,7 +251,7 @@ with st.expander("⚙️ FIRE Settings", expanded=True):
     st.caption("Only these four values need your input — everything else is auto-fetched.")
 
     # Restore from session state if previously calculated
-    prev = st.session_state.get("fire_settings", {})
+    prev = st.session_state.get("fire_settings") or {}
     
     col1, col2, col3, col4, col5 = st.columns(5)
 

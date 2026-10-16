@@ -13,7 +13,7 @@ st.markdown("Manage your account settings, secure wallet vault, and data retenti
 if "wallets_unlocked" not in st.session_state:
     st.session_state.wallets_unlocked = False
 
-user = st.session_state.get("user", {})
+user = st.session_state.get("user") or {}
 
 # --- SECTION 1: PROFILE SETTINGS ---
 st.subheader("👤 Profile Information")

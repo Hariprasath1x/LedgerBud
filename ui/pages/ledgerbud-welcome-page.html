@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LedgerBud</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0d12;
+    --surface: #14171f;
+    --surface2: #1c202a;
+    --border: rgba(255,255,255,.09);
+    --text: #eef0f5;
+    --muted: #8b93a7;
+    --green: #3fb56b;
+    --red: #e5534b;
+    --blue: #4a8df0;
+    --amber: #f4b942;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', system-ui, sans-serif; background: var(--bg); color: var(--text); overflow-x: hidden; overflow-y: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+
+  .page { position: relative; min-height: 100vh; display: flex; flex-direction: column; overflow: visible; }
+  .bg-grid {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 52px 52px;
+    mask-image: radial-gradient(ellipse at 65% 45%, #000 15%, transparent 72%);
+    -webkit-mask-image: radial-gradient(ellipse at 65% 45%, #000 15%, transparent 72%);
+  }
+  .glow { position: absolute; border-radius: 50%; filter: blur(90px); pointer-events: none; animation: drift 15s ease-in-out infinite; }
+  .g1 { width: 480px; height: 480px; background: rgba(63,181,107,.22); left: -140px; top: -120px; }
+  .g2 { width: 520px; height: 520px; background: rgba(74,141,240,.2); right: -140px; bottom: 40px; animation-delay: -6s; }
+  .g3 { width: 260px; height: 260px; background: rgba(229,83,75,.14); left: 38%; top: 55%; animation-delay: -9s; }
+  @keyframes drift { 0%,100% { transform: translate(0,0) } 50% { transform: translate(26px, 22px) } }
+
+  .main { position: relative; z-index: 2; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.12fr); }
+
+  /* LEFT */
+  .left { display: flex; flex-direction: column; justify-content: space-between; padding: clamp(18px, 3.6vh, 36px) clamp(24px, 5vw, 80px) clamp(14px, 2.4vh, 24px); min-height: 0; }
+  nav { display: flex; align-items: center; justify-content: space-between; }
+  .brand { display: flex; align-items: center; gap: 11px; font-family: 'Sora', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: -.02em; }
+  .brand .logo { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; background: linear-gradient(135deg, #3fb56b, #2a8c52); box-shadow: 0 8px 22px rgba(63,181,107,.35); }
+  .brand svg { width: 21px; height: 21px; color: #07130c; }
+  .nav-link { text-decoration: none; color: var(--text); font-size: 14px; font-weight: 600; padding: 9px 18px; border: 1px solid var(--border); border-radius: 999px; background: rgba(255,255,255,.03); transition: border-color .15s, background .15s; }
+  .nav-link:hover { border-color: var(--green); background: rgba(63,181,107,.1); }
+
+  .eyebrow { display: inline-flex; align-items: center; gap: 9px; font-size: 12.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--green); margin-bottom: clamp(12px, 2.4vh, 22px); }
+  .eyebrow::before { content: ""; width: 26px; height: 2px; background: var(--green); border-radius: 2px; }
+  h1 { font-family: 'Sora', sans-serif; font-weight: 800; font-size: clamp(40px, min(5.9vw, 10.4vh), 92px); line-height: 1.02; letter-spacing: -.04em; margin-bottom: clamp(14px, 2.8vh, 24px); }
+  h1 .hl { background: linear-gradient(95deg, #5fd48a, #4a8df0); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  h1 .rupee { display: inline-block; color: var(--text); animation: coin 4s ease-in-out infinite; transform-origin: 50% 60%; }
+  @keyframes coin { 0%, 100% { transform: rotateY(0) } 50% { transform: rotateY(180deg) } }
+  .sub { font-size: clamp(15px, 2.05vh, 18.5px); line-height: 1.62; color: var(--muted); max-width: 540px; margin-bottom: clamp(18px, 3.4vh, 32px); }
+  .cta { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: clamp(16px, 3vh, 28px); }
+  .btn { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-family: inherit; font-size: 16px; font-weight: 600; padding: 15px 26px; border-radius: 12px; transition: transform .15s, box-shadow .15s, border-color .15s; }
+  .btn-primary { background: var(--green); color: #07130c; box-shadow: 0 12px 30px rgba(63,181,107,.34); }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 16px 38px rgba(63,181,107,.48); }
+  .btn-primary svg { width: 18px; height: 18px; transition: transform .15s; }
+  .btn-primary:hover svg { transform: translateX(4px); }
+  .btn-ghost { color: var(--text); border: 1px solid var(--border); background: rgba(255,255,255,.03); }
+  .btn-ghost:hover { border-color: rgba(255,255,255,.3); }
+
+  .facts { display: flex; gap: clamp(18px, 3vw, 40px); flex-wrap: wrap; }
+  .fact b { display: block; font-family: 'Sora', sans-serif; font-size: clamp(20px, 3.3vh, 28px); font-weight: 700; }
+  .fact:nth-child(1) b { color: var(--green); } .fact:nth-child(2) b { color: var(--blue); } .fact:nth-child(3) b { color: var(--amber); }
+  .fact span { font-size: 13px; color: var(--muted); }
+
+  /* RIGHT */
+  .right { display: grid; place-items: center; padding: clamp(12px, 2vh, 24px) clamp(16px, 3vw, 56px) clamp(8px, 1.5vh, 16px) 0; min-height: 0; }
+  .stage { position: relative; width: 100%; max-width: 700px; height: min(100%, 600px); display: grid; place-items: center; }
+  .win { width: 92%; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; box-shadow: 0 40px 80px rgba(0,0,0,.55); overflow: hidden; animation: float 9s ease-in-out infinite; }
+  @keyframes float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-9px) } }
+  .bar-top { display: flex; align-items: center; gap: 7px; padding: 11px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .bar-top i { width: 10px; height: 10px; border-radius: 50%; }
+  .bar-top i:nth-child(1) { background: #ff5f57 } .bar-top i:nth-child(2) { background: #febc2e } .bar-top i:nth-child(3) { background: #28c840 }
+  .bar-top .url { margin-left: 10px; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--muted); background: rgba(0,0,0,.28); padding: 4px 12px; border-radius: 6px; }
+  .win-body { display: grid; grid-template-columns: 118px 1fr; }
+  .side { background: #181b24; border-right: 1px solid var(--border); padding: 14px 10px; display: flex; flex-direction: column; gap: 4px; }
+  .side small { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); padding: 4px 8px; }
+  .side div.it { font-size: 11.5px; padding: 7px 8px; border-radius: 7px; color: #b5bbcb; display: flex; align-items: center; gap: 7px; }
+  .side div.it::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: #3a4052; }
+  .side div.it.on { background: #2b2f3c; color: #fff; font-weight: 600; }
+  .side div.it.on::before { background: var(--green); }
+  .content { padding: 14px 16px 12px; min-width: 0; }
+  .content h3 { font-family: 'Sora', sans-serif; font-size: 17px; margin-bottom: 10px; letter-spacing: -.02em; }
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .kpi { background: var(--surface2); border: 1px solid var(--border); border-radius: 11px; padding: 9px 11px; }
+  .kpi span { font-size: 10.5px; color: var(--muted); }
+  .kpi b { display: block; font-size: clamp(14px, 2.2vh, 18px); font-weight: 700; margin-top: 2px; }
+  .kpi em { font-style: normal; font-size: 10px; font-weight: 600; color: var(--green); background: rgba(63,181,107,.15); padding: 2px 7px; border-radius: 99px; display: inline-block; margin-top: 4px; }
+  .chart { background: var(--surface2); border: 1px solid var(--border); border-radius: 11px; padding: 10px 10px 4px; }
+  .legend { display: flex; gap: 14px; font-size: 10.5px; color: var(--muted); margin-bottom: 2px; }
+  .legend i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 5px; }
+  .chart svg { width: 100%; height: auto; display: block; }
+  .chart .gl { stroke: rgba(255,255,255,.07); }
+  .chart text { fill: #7d8499; font-size: 9px; font-family: 'Inter', sans-serif; }
+  .chart .b { transform-box: fill-box; transform-origin: bottom; transform: scaleY(0); animation: up .9s var(--d) forwards cubic-bezier(.2,.8,.2,1); }
+  @keyframes up { to { transform: scaleY(1); } }
+  .chart .ln { fill: none; stroke: var(--blue); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw 1.8s 1.2s forwards ease-out; }
+  .chart .pt { fill: var(--blue); opacity: 0; animation: fadein .4s var(--d) forwards; }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  @keyframes fadein { to { opacity: 1; } }
+
+  .fc { position: absolute; z-index: 4; background: rgba(28,32,42,.92); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; box-shadow: 0 22px 50px rgba(0,0,0,.5); backdrop-filter: blur(10px); display: flex; align-items: center; gap: 12px; }
+  .fc b { display: block; font-size: 14px; }
+  .fc span { font-size: 11.5px; color: var(--muted); }
+  .fc1 { top: 2%; right: -1%; animation: float2 7s -2s ease-in-out infinite; }
+  .fc2 { bottom: 4%; left: -2%; animation: float2 8s -4s ease-in-out infinite; }
+  @keyframes float2 { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-9px) } }
+  .ring { width: 46px; height: 46px; flex: none; }
+  .ring circle { fill: none; stroke-width: 6; }
+  .ring .t { stroke: rgba(255,255,255,.1); }
+  .ring .v { stroke: var(--green); stroke-linecap: round; stroke-dasharray: 100; stroke-dashoffset: 100; transform: rotate(-90deg); transform-origin: 50% 50%; animation: ringf 1.6s 1s forwards ease-out; }
+  @keyframes ringf { to { stroke-dashoffset: 18; } }
+  .ico { width: 38px; height: 38px; border-radius: 11px; background: rgba(244,185,66,.15); color: var(--amber); display: grid; place-items: center; flex: none; }
+  .ico svg { width: 20px; height: 20px; }
+  .sample { position: absolute; right: 4px; bottom: -2px; font-size: 11px; color: var(--muted); opacity: .7; }
+
+  /* MARQUEE */
+  .marquee { position: relative; z-index: 2; border-top: 1px solid var(--border); background: rgba(20,23,31,.7); backdrop-filter: blur(8px); overflow: hidden; padding: 14px 0; mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .track { display: flex; gap: 12px; width: max-content; animation: scroll 38s linear infinite; }
+  .marquee:hover .track { animation-play-state: paused; }
+  @keyframes scroll { to { transform: translateX(-50%); } }
+  .pill { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 500; padding: 9px 18px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface2); white-space: nowrap; }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* entrance */
+  nav, .eyebrow, h1, .sub, .cta, .facts { animation: rise .8s both cubic-bezier(.2,.8,.2,1); }
+  .eyebrow { animation-delay: .05s } h1 { animation-delay: .12s } .sub { animation-delay: .2s } .cta { animation-delay: .28s } .facts { animation-delay: .36s }
+  @keyframes rise { from { opacity: 0; transform: translateY(18px) } to { opacity: 1; transform: none } }
+
+  @media (max-width: 900px) {
+    body { overflow-y: auto; }
+    .page { height: auto; min-height: 100dvh; }
+    .main { grid-template-columns: 1fr; }
+    .left { gap: 30px; padding-top: 24px; padding-bottom: 8px; }
+    .right { padding: 8px 16px 28px; }
+    .stage { height: auto; padding: 28px 0 34px; }
+    .win { width: 100%; }
+    .fc1 { top: -4px; right: 0; } .fc2 { bottom: 0; left: 0; }
+    .side { display: none; } .win-body { grid-template-columns: 1fr; }
+  }
+  @media (max-height: 660px) and (min-width: 901px) { .facts, .fc2 { display: none; } .side { display: none; } .win-body { grid-template-columns: 1fr; } }
+  /* FEATURES SECTION */
+  .features-section {
+    position: relative;
+    z-index: 2;
+    padding: 70px clamp(24px, 5vw, 80px) 80px;
+    background: linear-gradient(180deg, rgba(20,23,31,0.7) 0%, rgba(11,13,18,0.98) 100%);
+    border-top: 1px solid var(--border);
+  }
+  .features-header {
+    text-align: center;
+    max-width: 760px;
+    margin: 0 auto 48px;
+  }
+  .sec-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 12px;
+  }
+  .sec-eyebrow::before, .sec-eyebrow::after {
+    content: "";
+    width: 20px;
+    height: 2px;
+    background: var(--green);
+    border-radius: 2px;
+  }
+  .sec-title {
+    font-family: 'Sora', sans-serif;
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: 1.15;
+    margin-bottom: 16px;
+  }
+  .sec-desc {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 22px;
+    max-width: 1240px;
+    margin: 0 auto;
+  }
+  .feat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 26px;
+    transition: transform .2s, border-color .2s, box-shadow .2s;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .feat-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(63,181,107,.4);
+    box-shadow: 0 20px 40px rgba(0,0,0,.45);
+  }
+  .feat-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .feat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+  }
+  .feat-badge {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: rgba(255,255,255,.05);
+    color: var(--muted);
+  }
+  .feat-card h4 {
+    font-family: 'Sora', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    color: var(--text);
+  }
+  .feat-card p {
+    font-size: 13.8px;
+    color: var(--muted);
+    line-height: 1.6;
+    margin-bottom: 20px;
+  }
+  .feat-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .feat-pill {
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--surface2);
+    color: #b5bbcb;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .cta-banner {
+    max-width: 1240px;
+    margin: 48px auto 0;
+    background: linear-gradient(135deg, rgba(63,181,107,.15), rgba(74,141,240,.15));
+    border: 1px solid rgba(63,181,107,.3);
+    border-radius: 20px;
+    padding: 36px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 24px;
+  }
+  .cta-banner-text h3 {
+    font-family: 'Sora', sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .cta-banner-text p {
+    font-size: 15px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="bg-grid"></div>
+  <div class="glow g1"></div><div class="glow g2"></div><div class="glow g3"></div>
+
+  <div class="main">
+    <section class="left">
+      <nav>
+        <div class="brand">
+          <div class="logo">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-2"/><path d="M21 12h-6a2 2 0 0 0 0 4h6z"/></svg>
+          </div>
+          LedgerBud
+        </div>
+        <a class="nav-link" id="nav-signin" href="?auth=true" target="_top" onclick="navigateAuth(event)">Sign in</a>
+      </nav>
+
+      <div class="hero">
+        <div class="eyebrow">Personal finance analytics</div>
+        <h1>Every <span class="rupee">₹</span>upee,<br><span class="hl">accounted for.</span></h1>
+        <p class="sub">Bring your wallets, transactions and bank statements into one workspace. Track budgets and goals, spot subscriptions, and plan your path to financial independence.</p>
+        <div class="cta">
+          <a class="btn btn-primary" id="btn-workspace" href="?auth=true" onclick="navigateAuth(event)">Open Workspace
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+          <a class="btn btn-ghost" href="#features-section" onclick="scrollToFeatures(event)">See what's inside</a>
+        </div>
+        <div class="facts">
+          <div class="fact"><b>10+</b><span>Finance tools</span></div>
+          <div class="fact"><b>INR</b><span>Built for rupees</span></div>
+          <div class="fact"><b>0-100</b><span>Health score</span></div>
+        </div>
+      </div>
+
+      <div></div>
+    </section>
+
+    <section class="right">
+      <div class="stage">
+
+        <div class="fc fc1">
+          <svg class="ring" viewBox="0 0 48 48"><circle class="t" cx="24" cy="24" r="20" pathLength="100"/><circle class="v" cx="24" cy="24" r="20" pathLength="100"/></svg>
+          <div><b><span class="num" id="hs">0</span>/100</b><span>Financial health</span></div>
+        </div>
+
+        <div class="win">
+          <div class="bar-top"><i></i><i></i><i></i><span class="url">localhost:8501</span></div>
+          <div class="win-body">
+            <div class="side">
+              <small>Core</small>
+              <div class="it on">Overview</div><div class="it">Wallets</div><div class="it">Transactions</div><div class="it">Import</div>
+              <small>Planning</small>
+              <div class="it">Budgets</div><div class="it">Goals</div><div class="it">Subscriptions</div>
+              <small>Intelligence</small>
+              <div class="it">Net Worth</div><div class="it">FIRE</div><div class="it">Advisor</div>
+            </div>
+            <div class="content">
+              <h3>Financial Overview</h3>
+              <div class="kpis">
+                <div class="kpi"><span>Total Balance</span><b class="num" id="bal">₹0</b></div>
+                <div class="kpi"><span>Monthly Income</span><b class="num" id="inc">₹0</b></div>
+                <div class="kpi"><span>Savings Rate</span><b class="num" id="sr">0%</b><em>On track</em></div>
+              </div>
+              <div class="chart">
+                <div class="legend"><span><i style="background:var(--green)"></i>Income</span><span><i style="background:var(--red)"></i>Expense</span><span><i style="background:var(--blue);border-radius:50%"></i>Net Savings</span></div>
+                <svg viewBox="0 0 420 190">
+                  <line class="gl" x1="0" x2="420" y1="30" y2="30"/><line class="gl" x1="0" x2="420" y1="80" y2="80"/><line class="gl" x1="0" x2="420" y1="130" y2="130"/><line class="gl" x1="0" x2="420" y1="170" y2="170" style="stroke:rgba(255,255,255,.2)"/>
+                  <!-- income -->
+                  <rect class="b" style="--d:.3s" x="29" y="100" width="15" height="70" rx="2" fill="#3fb56b"/>
+                  <rect class="b" style="--d:.4s" x="99" y="85" width="15" height="85" rx="2" fill="#3fb56b"/>
+                  <rect class="b" style="--d:.5s" x="169" y="110" width="15" height="60" rx="2" fill="#3fb56b"/>
+                  <rect class="b" style="--d:.6s" x="239" y="70" width="15" height="100" rx="2" fill="#3fb56b"/>
+                  <rect class="b" style="--d:.7s" x="309" y="80" width="15" height="90" rx="2" fill="#3fb56b"/>
+                  <rect class="b" style="--d:.8s" x="379" y="55" width="15" height="115" rx="2" fill="#3fb56b"/>
+                  <!-- expense -->
+                  <rect class="b" style="--d:.35s" x="46" y="115" width="15" height="55" rx="2" fill="#e5534b"/>
+                  <rect class="b" style="--d:.45s" x="116" y="100" width="15" height="70" rx="2" fill="#e5534b"/>
+                  <rect class="b" style="--d:.55s" x="186" y="95" width="15" height="75" rx="2" fill="#e5534b"/>
+                  <rect class="b" style="--d:.65s" x="256" y="105" width="15" height="65" rx="2" fill="#e5534b"/>
+                  <rect class="b" style="--d:.75s" x="326" y="90" width="15" height="80" rx="2" fill="#e5534b"/>
+                  <rect class="b" style="--d:.85s" x="396" y="100" width="15" height="70" rx="2" fill="#e5534b"/>
+                  <!-- net line -->
+                  <polyline class="ln" pathLength="100" points="45,118 115,110 185,128 255,92 325,108 395,72"/>
+                  <circle class="pt" style="--d:1.6s" cx="45" cy="118" r="3.5"/><circle class="pt" style="--d:1.8s" cx="115" cy="110" r="3.5"/><circle class="pt" style="--d:2s" cx="185" cy="128" r="3.5"/><circle class="pt" style="--d:2.2s" cx="255" cy="92" r="3.5"/><circle class="pt" style="--d:2.4s" cx="325" cy="108" r="3.5"/><circle class="pt" style="--d:2.6s" cx="395" cy="72" r="3.5"/>
+                  <text x="30" y="185">May</text><text x="100" y="185">Jun</text><text x="171" y="185">Jul</text><text x="240" y="185">Aug</text><text x="310" y="185">Sep</text><text x="381" y="185">Oct</text>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="fc fc2">
+          <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg></div>
+          <div><b>Subscription renews in 3 days</b><span>Spotted automatically</span></div>
+        </div>
+        <span class="sample">Sample preview</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="marquee" id="features"><div class="track" id="track"></div></div>
+
+  <!-- FEATURES BREAKDOWN SECTION -->
+  <section class="features-section" id="features-section">
+    <div class="features-header">
+      <div class="sec-eyebrow">Everything Under One Roof</div>
+      <h2 class="sec-title">Personal Finance Intelligence Engineered for Precision</h2>
+      <p class="sec-desc">LedgerBud replaces fragmented spreadsheets with an automated, AI-augmented ledger system designed specifically for Indian personal finances (₹).</p>
+    </div>
+
+    <div class="features-grid">
+      <!-- 1. Wallets -->
+      <div class="feat-card">
+        <div>
+          <div class="feat-top">
+            <div class="feat-icon" style="color:var(--green)">🏦</div>
+            <span class="feat-badge">Core Engine</span>
+          </div>
+          <h4>Wallets &amp; Multi-Account Banking</h4>
+          <p>Consolidate savings accounts, credit cards, UPI, and cash into one unified portfolio with zero-loss transfers.</p>
+        </div>
+        <div class="feat-tags">
+          <span class="feat-pill">SBI / HDFC / ICICI</span>
+          <span class="feat-pill">Credit Cards</span>
+          <span class="feat-pill">Real-time Balance</span>
+        </div>
+      </div>
+
+      <!-- 2. Statement Import -->
+      <div class="feat-card">
+        <div>
+          <div class="feat-top">
+            <div class="feat-icon" style="color:var(--blue)">📑</div>
+            <span class="feat-badge">Automated ETL</span>
+          </div>
+          <h4>Smart Statement Ingestion</h4>
+          <p>Extract transactions directly from bank PDF and Excel statements with multi-layer deduplication and data integrity checks.</p>
+        </div>
+        <div class="feat-tags">
+          <span class="feat-pill">PDF Extraction</span>
+          <span class="feat-pill">Excel / CSV</span>
+          <span class="feat-pill">Deduplication</span>
+        </div>
+      </div>
+
+      <!-- 3. AI Categorization -->
+      <div class="feat-card">
+        <div>
+          <div class="feat-top">
+            <div class="feat-icon" style="color:var(--amber)">🏷️</div>
+            <span class="feat-badge">AI Intelligence</span>
+          </div>
+          <h4>Merchant &amp; Type Resolver</h4>
+          <p>Autonomous pattern recognition normalizes messy bank descriptions into clean merchant names with confidence scoring.</p>
+        </div>
+        <div class="feat-tags">
+          <span class="feat-pill">Heuristic ML</span>
+          <span class="feat-pill">UPI Resolver</span>
+          <span class="feat-pill">Confidence Scores</span>
+        </div>
+      </div>
+
+      <!-- 4. Overview & Analytics -->
+      <div class="feat-card">
+        <div>
+          <div class="feat-top">
+            <div class="feat-icon" style="color:var(--green)">📊</div>
+            <span class="feat-badge">Analytics</span>
+          </div>
+          <h4>Financial Overview &amp; Trends</h4>
+          <p>Visualize monthly income vs expense velocity, category breakdowns, and net savings trends with interactive Plotly charts.</p>
+        </div>
+        <div class="feat-tags">
+          <span class="feat-pill">Monthly Burn Rate</span>
+          <span class="feat-pill">Cash Flow</span>
+          <span class="feat-pill">Interactive Charts</span>
+        </div>
+      </div>
+
+      <!-- 5. Budgets & Goals -->
+      <div class="feat-card">
+        <div>
+          <div class="feat-top">
+            <div class="feat-icon" style="color:var(--blue)">🎯</div>
+            <span class="feat-badge">Planning</span>
+          </div>
+          <h4>Budgets, Goals &amp; Subscriptions</h4>
+          <p>Establish category spending limits, track savings milestones with target dates, and detect recurring bill renewals automatically.</p>
+        </div>
+        <div class="feat-tags">
+          <span class="feat-pill">Budget Guardrails</span>
+          <span class="feat-pill">Milestone Projections</span>
+          <span class="feat-pill">Subscription Tracker</span>
+        </div>
+      </div>
+
+      <!-- 6. FIRE & Net Worth -->
+      <div class="feat-card">
+        <div>
+          <div class="feat-top">
+            <div class="feat-icon" style="color:var(--red)">🔥</div>
+            <span class="feat-badge">Wealth OS</span>
+          </div>
+          <h4>FIRE Planner &amp; Net Worth Engine</h4>
+          <p>Model Coast FIRE, Lean FIRE, and Fat FIRE timelines with safe withdrawal rate simulations and asset vs liability tracking.</p>
+        </div>
+        <div class="feat-tags">
+          <span class="feat-pill">Coast / Lean / Fat FIRE</span>
+          <span class="feat-pill">Asset Allocation</span>
+          <span class="feat-pill">SWR Simulator</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA BANNER -->
+    <div class="cta-banner">
+      <div class="cta-banner-text">
+        <h3>Ready to take control of your financial destiny?</h3>
+        <p>Start tracking your net worth and optimizing your cash flow today.</p>
+      </div>
+      <a class="btn btn-primary" href="?auth=true" onclick="navigateAuth(event)">Open Workspace Now
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      </a>
+    </div>
+  </section>
+</div>
+
+<script>
+  function scrollToFeatures(e) {
+    if (e) e.preventDefault();
+    const el = document.getElementById('features-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }
+
+  function navigateAuth(e) {
+    if (e) e.preventDefault();
+    const host = window.location.hostname || 'localhost';
+    const targetUrl = window.location.protocol + '//' + host + ':8501/?auth=true';
+
+    // 1. Standalone or FastAPI view (port 8000)
+    if (window.location.port === '8000') {
+      window.location.href = targetUrl;
+      return;
+    }
+
+    // 2. Try updating search param on top window (triggers Streamlit rerun without unloading browser)
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.search = '?auth=true';
+        return;
+      }
+    } catch (_) {}
+
+    // 3. Direct top window navigation
+    try {
+      if (window.top && window.top !== window) {
+        window.top.location.href = targetUrl;
+        return;
+      }
+    } catch (_) {}
+
+    // 4. Parent window navigation
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.location.href = targetUrl;
+        return;
+      }
+    } catch (_) {}
+
+    // 5. Try window.open _top
+    try {
+      const opened = window.open(targetUrl, '_top');
+      if (opened) return;
+    } catch (_) {}
+
+    // 6. Try window.open _blank (escapes Streamlit sandbox)
+    try {
+      window.open(targetUrl, '_blank');
+      return;
+    } catch (_) {}
+
+    // Fallback: self navigation
+    window.location.href = targetUrl;
+  }
+
+  // adapt links on standalone / fastapi view
+  if (window.location.port === '8000') {
+    const appUrl = window.location.protocol + '//' + window.location.hostname + ':8501';
+    const signinEl = document.getElementById('nav-signin');
+    const wsEl = document.getElementById('btn-workspace');
+    if (signinEl) signinEl.href = appUrl + '/?auth=true';
+    if (wsEl) wsEl.href = appUrl;
+  }
+
+  // feature marquee
+  const feats = [
+    ['Financial Overview','#3fb56b'], ['Wallets','#4a8df0'], ['Transactions','#e5534b'], ['Statement Import','#f4b942'],
+    ['Budgets','#3fb56b'], ['Savings Goals','#4a8df0'], ['Subscriptions','#e5534b'], ['Intelligence','#f4b942'],
+    ['Net Worth','#3fb56b'], ['FIRE Planner','#e5534b'], ['AI Financial Advisor','#4a8df0'], ['Analytics & Trends','#3fb56b']
+  ];
+  const html = feats.map(([n, c]) => `<span class="pill"><i style="background:${c}"></i>${n}</span>`).join('');
+  const trackEl = document.getElementById('track');
+  if (trackEl) trackEl.innerHTML = html + html;
+
+  // count-ups
+  const fmt = new Intl.NumberFormat('en-IN');
+  function count(el, to, render, delay = 500, dur = 1700) {
+    if (!el) return;
+    const t0 = performance.now() + delay;
+    (function step(now) {
+      const t = Math.min(Math.max((now - t0) / dur, 0), 1);
+      el.textContent = render(Math.round(to * (1 - Math.pow(1 - t, 3))));
+      if (t < 1) requestAnimationFrame(step);
+    })(performance.now());
+  }
+  count(document.getElementById('bal'), 124580, v => '₹' + fmt.format(v));
+  count(document.getElementById('inc'), 52000, v => '₹' + fmt.format(v), 650);
+  count(document.getElementById('sr'), 34, v => v + '%', 800);
+  count(document.getElementById('hs'), 82, v => v, 1000, 1500);
+</script>
+</body>
+</html>

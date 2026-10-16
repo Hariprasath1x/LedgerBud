@@ -1,6 +1,6 @@
 """Wallet CRUD routes."""
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.fastapi_app.api.deps import get_current_user, get_session

@@ -7,7 +7,6 @@ import re
 import logging
 from pathlib import Path
 from typing import List, Optional, Tuple, Dict
-from datetime import date
 
 import pdfplumber
 

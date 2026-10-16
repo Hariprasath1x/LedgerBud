@@ -17,7 +17,10 @@ from app.fastapi_app.schemas.import_job import ImportCommitResponse, ImportPrevi
 from app.etl.extractor import PDFExtractor, CSVExtractor, XLSXExtractor
 from app.etl.transformer.normalizer import parse_date, parse_amount, clean_description
 from app.etl.transformer.deduplicator import detect_duplicates, NormalizedTransaction
-
+from app.etl.transformer.recognition_engine import MerchantRecognitionEngine
+from app.etl.transformer.type_resolver import TransactionTypeResolver
+from app.etl.transformer.segmenter import segment_transactions
+from app.fastapi_app.models.merchant import Merchant
 from app.fastapi_app.models.wallet import Wallet
 
 
@@ -25,8 +28,13 @@ ALLOWED_EXTENSIONS = {"pdf", "csv", "xlsx", "xls"}
 UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "app/static/uploads")
 
 
-
-
+def _safe_float(val: object) -> float | None:
+    if val is None or val == "None" or val == "":
+        return None
+    try:
+        return float(val)
+    except (ValueError, TypeError):
+        return None
 
 class ImportService:
     def __init__(self, session: Session) -> None:
@@ -104,7 +112,7 @@ class ImportService:
             ImportPreviewTransaction(
                 date=str(t.get("date", "")),
                 description=t.get("description", ""),
-                amount=float(t.get("amount")) if t.get("amount") is not None else None,
+                amount=_safe_float(t.get("amount")),
                 transaction_type=t.get("transaction_type", "Expense"),
                 merchant_name=t.get("merchant_name"),
                 category=t.get("category"),
@@ -203,7 +211,6 @@ class ImportService:
             fin_status = "incomplete"
             
         description = clean_description(raw_txn.description)
-        balance = parse_amount(raw_txn.balance) if raw_txn.balance else None
         
         # New Recognition Engine
         decision = engine.recognize(raw_txn.description, description)
@@ -238,10 +245,6 @@ class ImportService:
 
     def _run_etl_extract(self, file_path: str, job_id: int, wallet_id: int) -> dict:
         """Extract and transform without saving."""
-        from app.etl.transformer.recognition_engine import MerchantRecognitionEngine
-        
-        from app.etl.transformer.type_resolver import TransactionTypeResolver
-        
         # Get user_id from job
         job = self.session.scalar(select(ImportJob).where(ImportJob.id == job_id))
         user_id = job.user_id if job else 0
@@ -257,7 +260,6 @@ class ImportService:
         if not ext_res.success and not ext_res.transactions:
             raise RuntimeError("; ".join(ext_res.errors))
             
-        from app.etl.transformer.segmenter import segment_transactions
         ext_res.transactions = segment_transactions(ext_res.transactions)
         
         normalized = []
@@ -272,7 +274,7 @@ class ImportService:
                         previous_balance = norm.balance_after
                 else:
                     failed += 1
-            except Exception as e:
+            except Exception:
                 failed += 1
                 
         existing = self._get_existing_fingerprints(wallet_id)
@@ -285,7 +287,7 @@ class ImportService:
             sample.append({
                 'date': txn.date.isoformat() if txn.date else '',
                 'description': txn.description,
-                'amount': str(txn.amount),
+                'amount': str(txn.amount) if txn.amount is not None else None,
                 'transaction_type': txn.type.capitalize() if txn.type else 'Unknown',
                 'merchant_name': txn.decision.canonical_name if hasattr(txn, 'decision') else txn.merchant_name_raw,
                 'category': txn.decision.category if hasattr(txn, 'decision') else None,
@@ -313,10 +315,6 @@ class ImportService:
 
     def _run_etl_commit(self, file_path: str, job_id: int, wallet_id: int, user_id: int) -> dict:
         """Extract, transform, and load unique transactions to database."""
-        from app.etl.transformer.recognition_engine import MerchantRecognitionEngine
-        from app.etl.transformer.type_resolver import TransactionTypeResolver
-        from app.fastapi_app.models.merchant import Merchant
-        
         engine = MerchantRecognitionEngine(self.session, user_id)
         type_resolver = TransactionTypeResolver()
         
@@ -325,8 +323,6 @@ class ImportService:
             raise ValueError("No extractor available")
             
         ext_res = extractor.extract(file_path)
-        
-        from app.etl.transformer.segmenter import segment_transactions
         ext_res.transactions = segment_transactions(ext_res.transactions)
         
         normalized = []
@@ -373,7 +369,7 @@ class ImportService:
                     if merchant:
                         # Update stats
                         merchant.total_transactions += 1
-                        merchant.total_amount += float(norm.amount)
+                        merchant.total_amount += float(norm.amount or 0.0)
                         merchant.last_seen = func.now()
                         merchant_id = merchant.id
                         
@@ -397,7 +393,7 @@ class ImportService:
                 )
                 self.session.add(txn)
                 imported_count += 1
-            except Exception as e:
+            except Exception:
                 import logging
                 logging.exception("Error committing transaction")
                 pass

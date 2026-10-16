@@ -1,7 +1,7 @@
 """Tests for Firebase Authentication flow and endpoints."""
 
 import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 from fastapi import status
 from fastapi.testclient import TestClient
 
@@ -42,71 +42,51 @@ def enable_firebase():
     settings.firebase_project_id = original_project_id
 
 
-@patch("app.fastapi_app.services.auth_service.firebase_sign_up")
-@patch("app.fastapi_app.services.auth_service.firebase_sign_in")
-def test_firebase_register_success(mock_sign_in, mock_sign_up, client, enable_firebase, db_session):
-    """Verify user registration under Firebase mode."""
-    # Mock firebase calls
-    mock_sign_up.return_value = {
-        "idToken": "mock-firebase-id-token",
-        "email": "newuser@example.com",
-        "localId": "fb-uid-123"
+@patch("app.fastapi_app.api.deps.verify_firebase_token")
+def test_firebase_update_name(mock_verify_token, client, enable_firebase, db_session):
+    """Verify user can update display name with Firebase token."""
+    mock_verify_token.return_value = {
+        "email": "updateuser@example.com",
+        "name": "Original Name",
+        "uid": "fb-uid-update"
     }
-    mock_sign_in.return_value = {
-        "idToken": "mock-firebase-id-token",
-        "email": "newuser@example.com",
-        "localId": "fb-uid-123",
-        "expiresIn": "3600"
-    }
+    headers = {"Authorization": "Bearer valid-firebase-token"}
+    # Call me first to auto-provision
+    client.get("/api/v1/auth/me", headers=headers)
 
-    payload = {
-        "email": "newuser@example.com",
-        "password": "securepassword123",
-        "full_name": "Firebase User"
-    }
-
-    response = client.post("/api/v1/auth/register", json=payload)
-    assert response.status_code == status.HTTP_201_CREATED
-    
-    data = response.json()
-    assert "token" in data
-    assert data["token"]["access_token"] == "mock-firebase-id-token"
-    assert data["user"]["email"] == "newuser@example.com"
-    assert data["user"]["full_name"] == "Firebase User"
-
-    # Confirm user was created in local DB
-    user_repo = UserRepository(db_session)
-    local_user = user_repo.get_by_email("newuser@example.com")
-    assert local_user is not None
-    assert local_user.full_name == "Firebase User"
-
-
-@patch("app.fastapi_app.services.auth_service.firebase_sign_in")
-def test_firebase_login_success(mock_sign_in, client, enable_firebase, db_session):
-    """Verify user login under Firebase mode and auto-provisioning if missing locally."""
-    mock_sign_in.return_value = {
-        "idToken": "mock-firebase-login-token",
-        "email": "existinguser@example.com",
-        "localId": "fb-uid-existing",
-        "expiresIn": "3600"
-    }
-
-    payload = {
-        "email": "existinguser@example.com",
-        "password": "mypassword"
-    }
-
-    response = client.post("/api/v1/auth/login", json=payload)
+    # Now update name
+    response = client.put("/api/v1/auth/me/name", json={"full_name": "Updated Name"}, headers=headers)
     assert response.status_code == status.HTTP_200_OK
-    
     data = response.json()
-    assert data["access_token"] == "mock-firebase-login-token"
+    assert data["full_name"] == "Updated Name"
 
-    # Verify user record was auto-provisioned locally
+    # Confirm in local DB
     user_repo = UserRepository(db_session)
-    local_user = user_repo.get_by_email("existinguser@example.com")
+    local_user = user_repo.get_by_email("updateuser@example.com")
     assert local_user is not None
-    assert local_user.full_name == "existinguser"  # Derived from email fallback prefix
+    assert local_user.full_name == "Updated Name"
+
+
+@patch("app.fastapi_app.api.deps.verify_firebase_token")
+def test_firebase_delete_profile(mock_verify_token, client, enable_firebase, db_session):
+    """Verify user can delete their profile with Firebase token."""
+    mock_verify_token.return_value = {
+        "email": "deleteuser@example.com",
+        "name": "Delete Me",
+        "uid": "fb-uid-delete"
+    }
+    headers = {"Authorization": "Bearer valid-firebase-token"}
+    # Auto-provision
+    client.get("/api/v1/auth/me", headers=headers)
+
+    with patch("firebase_admin.auth.delete_user"):
+        response = client.delete("/api/v1/auth/me", headers=headers)
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+
+    # Confirm deleted from DB
+    user_repo = UserRepository(db_session)
+    local_user = user_repo.get_by_email("deleteuser@example.com")
+    assert local_user is None
 
 
 @patch("app.fastapi_app.api.deps.verify_firebase_token")

@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from app.fastapi_app.api.deps import get_current_user, get_session
 from app.fastapi_app.schemas.fire import (
     FireAIRequest,
-    FireAIResponse,
     FireCalculationResult,
     FireDashboardResponse,
     FireHistoryItem,

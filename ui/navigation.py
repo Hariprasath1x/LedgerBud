@@ -3,9 +3,20 @@
 import streamlit as st
 
 
-def run_navigation():
-    """Define the page mapping and execute Streamlit navigation."""
-    # Define available workspace pages
+def get_navigation():
+    """Build and return the appropriate st.navigation object based on auth state."""
+    raw_auth = st.query_params.get("auth", "false")
+    if isinstance(raw_auth, list):
+        raw_auth = raw_auth[0] if raw_auth else "false"
+    is_auth_param = str(raw_auth).lower() in ("true", "1")
+
+    # When unauthenticated: provide Welcome and Auth pages
+    if not st.session_state.get("authenticated", False):
+        welcome_page = st.Page("ui/pages/welcome.py", title="Welcome & Overview", icon="✨", default=not is_auth_param)
+        auth_page = st.Page("ui/pages/auth_page.py", title="Sign In to Workspace", icon="🔐", default=is_auth_param)
+        return st.navigation([welcome_page, auth_page], position="hidden")
+
+    # When authenticated: provide full workspace suites
     pages = {
         "Core": [
             st.Page("ui/pages/overview.py", title="Financial Overview", icon="📊", default=True),
@@ -27,9 +38,15 @@ def run_navigation():
         ],
         "Settings": [
             st.Page("ui/pages/profile.py", title="User Profile", icon="👤"),
+            st.Page("ui/pages/welcome.py", title="Welcome & Overview", icon="✨"),
         ]
     }
 
-    pg = st.navigation(pages, position="sidebar")
+    return st.navigation(pages, position="sidebar")
+
+
+def run_navigation():
+    """Define the page mapping and execute Streamlit navigation."""
+    pg = get_navigation()
     pg.run()
 
