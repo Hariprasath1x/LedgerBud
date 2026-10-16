@@ -44,6 +44,7 @@ def login_user(token: str, user: dict):
     st.session_state.authenticated = True
     st.session_state.token = token
     st.session_state.user = user
+    st.session_state.show_auth = False
 
 
 def logout_user():
@@ -52,3 +53,4 @@ def logout_user():
     st.session_state.token = None
     st.session_state.user = None
     st.session_state.active_wallet_id = None
+    st.session_state.show_auth = False

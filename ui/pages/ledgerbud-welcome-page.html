@@ -312,7 +312,7 @@
         <h1>Every <span class="rupee">₹</span>upee,<br><span class="hl">accounted for.</span></h1>
         <p class="sub">Bring your wallets, transactions and bank statements into one workspace. Track budgets and goals, spot subscriptions, and plan your path to financial independence.</p>
         <div class="cta">
-          <a class="btn btn-primary" id="btn-workspace" href="?auth=true" onclick="navigateAuth(event)">Open Workspace
+          <a class="btn btn-primary" id="btn-workspace" href="?auth=true" target="_top" onclick="navigateAuth(event)">Open Workspace
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           </a>
           <a class="btn btn-ghost" href="#features-section" onclick="scrollToFeatures(event)">See what's inside</a>
@@ -510,7 +510,7 @@
         <h3>Ready to take control of your financial destiny?</h3>
         <p>Start tracking your net worth and optimizing your cash flow today.</p>
       </div>
-      <a class="btn btn-primary" href="?auth=true" onclick="navigateAuth(event)">Open Workspace Now
+      <a class="btn btn-primary" href="?auth=true" target="_top" onclick="navigateAuth(event)">Open Workspace Now
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
       </a>
     </div>
@@ -527,25 +527,65 @@
   }
 
   function navigateAuth(e) {
-    if (e) e.preventDefault();
-    const host = window.location.hostname || 'localhost';
-    const targetUrl = window.location.protocol + '//' + host + ':8501/?auth=true';
+    if (e && e.preventDefault) e.preventDefault();
 
-    // 1. Standalone or FastAPI view (port 8000)
-    if (window.location.port === '8000') {
-      window.location.href = targetUrl;
-      return;
+    // 1. If embedded in Streamlit iframe (same-origin): trigger parent Streamlit button directly
+    try {
+      if (window.parent && window.parent !== window && window.parent.document) {
+        const pDoc = window.parent.document;
+        // If already signed in, go to overview
+        const overviewBtn = pDoc.querySelector('button[key="welcome_top_overview_btn"]') ||
+                            Array.from(pDoc.querySelectorAll('button')).find(b => {
+                              const t = (b.innerText || b.textContent || '').trim();
+                              return t.includes('Financial Overview');
+                            });
+        if (overviewBtn) {
+          overviewBtn.click();
+          return;
+        }
+
+        // Open Workspace / Sign In button
+        const authBtn = pDoc.querySelector('button[key="welcome_top_auth_btn"]') ||
+                        Array.from(pDoc.querySelectorAll('button')).find(b => {
+                          const t = (b.innerText || b.textContent || '').trim();
+                          return t.includes('Open Workspace') || t.includes('Sign In');
+                        });
+        if (authBtn) {
+          authBtn.click();
+          return;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Resolve proper target URL
+    let targetUrl = '/?auth=true';
+    try {
+      if (window.parent && window.parent !== window && window.parent.location && window.parent.location.origin) {
+        targetUrl = window.parent.location.origin + window.parent.location.pathname + '?auth=true';
+      } else if (window.location.protocol.startsWith('http')) {
+        const port = window.location.port === '8000' ? ':8501' : (window.location.port ? ':' + window.location.port : '');
+        targetUrl = window.location.protocol + '//' + window.location.hostname + port + '/?auth=true';
+      } else {
+        targetUrl = 'http://localhost:8501/?auth=true';
+      }
+    } catch (_) {
+      targetUrl = 'http://localhost:8501/?auth=true';
     }
 
-    // 2. Try updating search param on top window (triggers Streamlit rerun without unloading browser)
+    // 3. Try creating and clicking an anchor element in parent document (same-origin context)
     try {
-      if (window.top && window.top !== window) {
-        window.top.location.search = '?auth=true';
+      if (window.parent && window.parent !== window && window.parent.document) {
+        const a = window.parent.document.createElement('a');
+        a.href = targetUrl;
+        a.target = '_top';
+        window.parent.document.body.appendChild(a);
+        a.click();
+        a.remove();
         return;
       }
     } catch (_) {}
 
-    // 3. Direct top window navigation
+    // 4. Try direct top/parent window navigation
     try {
       if (window.top && window.top !== window) {
         window.top.location.href = targetUrl;
@@ -553,7 +593,6 @@
       }
     } catch (_) {}
 
-    // 4. Parent window navigation
     try {
       if (window.parent && window.parent !== window) {
         window.parent.location.href = targetUrl;
@@ -563,14 +602,8 @@
 
     // 5. Try window.open _top
     try {
-      const opened = window.open(targetUrl, '_top');
-      if (opened) return;
-    } catch (_) {}
-
-    // 6. Try window.open _blank (escapes Streamlit sandbox)
-    try {
-      window.open(targetUrl, '_blank');
-      return;
+      const w = window.open(targetUrl, '_top');
+      if (w) return;
     } catch (_) {}
 
     // Fallback: self navigation
@@ -583,7 +616,7 @@
     const signinEl = document.getElementById('nav-signin');
     const wsEl = document.getElementById('btn-workspace');
     if (signinEl) signinEl.href = appUrl + '/?auth=true';
-    if (wsEl) wsEl.href = appUrl;
+    if (wsEl) wsEl.href = appUrl + '/?auth=true';
   }
 
   // feature marquee

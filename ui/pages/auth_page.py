@@ -16,11 +16,11 @@ def main():
     col_back, _ = st.columns([1, 5])
     with col_back:
         if st.button("← Back to Welcome", type="secondary", key="btn_back_to_welcome"):
+            st.session_state.show_auth = False
             st.query_params.clear()
             try:
                 st.switch_page("ui/pages/welcome.py")
             except Exception:
-                st.session_state.show_auth = False
                 st.rerun()
 
     render_auth_page()

@@ -30,11 +30,11 @@ def render_welcome_page(is_authenticated: bool = False):
     with col_bar_r:
         if not is_authenticated:
             if st.button("🚀 Open Workspace / Sign In", type="primary", use_container_width=True, key="welcome_top_auth_btn"):
+                st.session_state.show_auth = True
                 st.query_params["auth"] = "true"
                 try:
                     st.switch_page("ui/pages/auth_page.py")
                 except Exception:
-                    st.session_state.show_auth = True
                     st.rerun()
         else:
             if st.button("📊 Go to Financial Overview", type="primary", use_container_width=True, key="welcome_top_overview_btn"):

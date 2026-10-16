@@ -86,7 +86,7 @@ def create_app() -> FastAPI:
 
     @app.get("/app", tags=["Meta"])
     def redirect_to_app() -> RedirectResponse:
-        return RedirectResponse("http://localhost:8501")
+        return RedirectResponse("http://localhost:8501/?auth=true")
 
     @app.get("/", tags=["Meta"])
     def root() -> dict[str, str]:
