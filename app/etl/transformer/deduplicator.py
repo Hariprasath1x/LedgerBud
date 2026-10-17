@@ -44,7 +44,19 @@ def detect_duplicates(
 
     # Build fingerprints from existing transactions
     for txn in existing_transactions:
-        fp = _fingerprint(txn.get('date'), txn.get('amount'), txn.get('description', ''))
+        raw_date = txn.get('date')
+        if hasattr(raw_date, 'isoformat'):
+            d_str = raw_date.isoformat()
+        else:
+            d_str = str(raw_date or '')
+
+        raw_amt = txn.get('amount')
+        amt_str = str(raw_amt if raw_amt is not None else '')
+
+        raw_desc = txn.get('description')
+        desc_str = str(raw_desc or '')
+
+        fp = _fingerprint(d_str, amt_str, desc_str)
         seen_fingerprints.add(fp)
 
     for txn in new_transactions:
@@ -67,7 +79,7 @@ def _fingerprint(date_str: str, amount_str: str, description: str) -> str:
     """Create a deduplication fingerprint."""
     # Normalize amount
     try:
-        amount = round(float(str(amount_str).replace(',', '')), 2)
+        amount = round(float(amount_str.replace(',', '')), 2)
     except (ValueError, TypeError):
         amount = 0.0
 

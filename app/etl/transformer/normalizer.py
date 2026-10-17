@@ -7,7 +7,7 @@ Cleans and standardizes raw extracted transaction data:
 """
 import re
 import logging
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from decimal import Decimal, InvalidOperation
 from dateutil import parser as dateutil_parser
@@ -34,7 +34,10 @@ def parse_date(date_str: str) -> Optional[date]:
     # Try dateutil first (very flexible)
     try:
         parsed = dateutil_parser.parse(date_str, dayfirst=True)
-        return parsed.date()
+        if isinstance(parsed, datetime):
+            return parsed.date()
+        if isinstance(parsed, tuple) and len(parsed) > 0 and isinstance(parsed[0], datetime):
+            return parsed[0].date()
     except Exception:
         pass
 
@@ -47,7 +50,7 @@ def parse_amount(amount_str: str) -> Optional[Decimal]:
         return None
 
     # Remove currency symbols, spaces, and common non-numeric chars
-    cleaned = re.sub(r'[₹$€£¥\s,]', '', str(amount_str).strip())
+    cleaned = re.sub(r'[₹$€£¥\s,]', '', amount_str.strip())
 
     # Remove trailing Cr/Dr indicators
     cleaned = re.sub(r'(cr|dr)$', '', cleaned, flags=re.IGNORECASE).strip()

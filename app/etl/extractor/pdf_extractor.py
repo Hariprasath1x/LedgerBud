@@ -222,10 +222,11 @@ class PDFExtractor(BaseExtractor):
             is_new_txn = is_date or is_marker or is_clash
 
             if is_new_txn:
-                txn = self._parse_row(row, col_map)
-                if not txn.date and current_txn:
-                    txn.date = current_txn.date  # Inherit date for same-day transactions without explicit date
+                fallback = current_txn.date if current_txn else None
+                txn = self._parse_row(row, col_map, fallback_date=fallback)
                 if txn:
+                    if not txn.date and current_txn:
+                        txn.date = current_txn.date  # Inherit date for same-day transactions without explicit date
                     if current_txn:
                         transactions.append(current_txn)
                     current_txn = txn
@@ -290,7 +291,7 @@ class PDFExtractor(BaseExtractor):
 
         return None, {}
 
-    def _parse_row(self, row: List, col_map: Dict[str, int]) -> Optional[RawTransaction]:
+    def _parse_row(self, row: List, col_map: Dict[str, int], fallback_date: Optional[str] = None) -> Optional[RawTransaction]:
         """Parse a single table row into a RawTransaction."""
         def safe_get(col_key: str) -> str:
             idx = col_map.get(col_key)
@@ -299,7 +300,7 @@ class PDFExtractor(BaseExtractor):
                 return str(val).strip() if val else ''
             return ''
 
-        date_val = safe_get('date')
+        date_val = safe_get('date') or fallback_date or ''
         desc_val = safe_get('description')
 
         # Skip rows without date and description

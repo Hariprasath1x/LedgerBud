@@ -36,6 +36,7 @@ pdfplumber==0.11.4
 pandas==2.2.2
 openpyxl==3.1.5
 python-dateutil==2.9.0.post0
+types-python-dateutil>=2.9.0
 fuzzywuzzy==0.18.0
 python-Levenshtein
 
