@@ -22,13 +22,30 @@ from app.fastapi_app.core.logging import configure_logging
 from app.fastapi_app.db.base import Base
 from app.fastapi_app.db.session import engine
 from app.fastapi_app.exceptions.handlers import register_exception_handlers
-from app.fastapi_app.models import Transaction, User, Wallet, Budget, Goal, Subscription, ImportJob, FireAnalysis  # noqa: F401 - ensure model registration
+import logging
+from app.fastapi_app.models import (  # noqa: F401 - ensure model registration
+    Budget,
+    FireAnalysis,
+    Goal,
+    ImportJob,
+    Merchant,
+    NetWorthItem,
+    NetWorthSnapshot,
+    Subscription,
+    Transaction,
+    User,
+    Wallet,
+)
 from app.fastapi_app.api.routes.dashboard import router as dashboard_router
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     if settings.auto_create_tables:
+        logging.getLogger("uvicorn.error").warning(
+            "AUTO_CREATE_TABLES is enabled. Note: Base.metadata.create_all() does not perform schema upgrades. "
+            "For production deployments, execute 'alembic upgrade head' instead."
+        )
         Base.metadata.create_all(bind=engine)
     yield
 

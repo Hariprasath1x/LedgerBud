@@ -41,6 +41,7 @@ class MerchantRecognitionEngine:
     def __init__(self, session: Session, user_id: int):
         self.session = session
         self.user_id = user_id
+        self.known_merchants: dict[str, tuple[str, str]] = {}
         self._build_seed_lookup()
 
     def _build_seed_lookup(self):
@@ -117,11 +118,11 @@ class MerchantRecognitionEngine:
             )
         )
 
-    def _check_known_database(self, normalized_desc: str, raw_desc: str) -> Optional[tuple]:
+    def _check_known_database(self, normalized_desc: str, raw_desc: str) -> Optional[tuple[str, str, str]]:
         search_space = (normalized_desc + " " + raw_desc).lower()
         
         # Sort keywords by length descending to match longest phrases first (e.g. "amazon prime" before "amazon")
-        sorted_keywords = sorted(self.known_merchants.keys(), key=len, reverse=True)
+        sorted_keywords: list[str] = sorted(self.known_merchants.keys(), key=len, reverse=True)
         
         for kw in sorted_keywords:
             if kw in search_space:

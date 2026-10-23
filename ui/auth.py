@@ -8,12 +8,21 @@ from ui.state import login_user
 
 
 def _get_api_key():
-    return os.environ.get("FIREBASE_API_KEY", "")
+    key = os.environ.get("FIREBASE_API_KEY", "")
+    if not key:
+        try:
+            if hasattr(st, "secrets") and "FIREBASE_API_KEY" in st.secrets:
+                key = str(st.secrets["FIREBASE_API_KEY"]).strip()
+        except Exception:
+            pass
+    return key
 
 def firebase_auth_request(endpoint: str, payload: dict) -> dict:
     api_key = _get_api_key()
     if not api_key:
-        raise ValueError("FIREBASE_API_KEY environment variable is not set. Please check your .env file.")
+        raise ValueError(
+            "FIREBASE_API_KEY is not configured. Please configure it in your .env file or Streamlit Secrets."
+        )
         
     url = f"https://identitytoolkit.googleapis.com/v1/{endpoint}?key={api_key}"
     resp = httpx.post(url, json=payload, timeout=10.0)
@@ -24,6 +33,51 @@ def firebase_auth_request(endpoint: str, payload: dict) -> dict:
         raise Exception(error_msg)
         
     return resp.json()
+
+
+def is_cookie_secure() -> bool:
+    """Determine if Secure cookie flag should be enforced based on environment."""
+    env = os.environ.get("ENVIRONMENT", "")
+    cookie_secure = os.environ.get("COOKIE_SECURE", "")
+    try:
+        if hasattr(st, "secrets"):
+            if not env and "ENVIRONMENT" in st.secrets:
+                env = str(st.secrets["ENVIRONMENT"]).strip()
+            if not cookie_secure and "COOKIE_SECURE" in st.secrets:
+                cookie_secure = str(st.secrets["COOKIE_SECURE"]).strip()
+    except Exception:
+        pass
+    env = env.lower()
+    cookie_secure = cookie_secure.lower()
+    if cookie_secure in ("true", "1", "yes"):
+        return True
+    if cookie_secure in ("false", "0", "no"):
+        return False
+    return env in ("production", "prod", "staging")
+
+
+def get_set_cookie_script(token: str, max_age: int = 604800) -> str:
+    """Generate script to persist session token in cookie, enabling Secure flag on HTTPS/production."""
+    force_secure = "true" if is_cookie_secure() else "false"
+    return f"""<script>
+    (function() {{
+        var isHttps = (window.location.protocol === 'https:') || (window.parent && window.parent.location.protocol === 'https:') || {force_secure};
+        var secureFlag = isHttps ? '; Secure' : '';
+        document.cookie = "lb_session_token={token}; path=/; max-age={max_age}; SameSite=Lax" + secureFlag;
+    }})();
+    </script>"""
+
+
+def get_clear_cookie_script() -> str:
+    """Generate script to clear session token cookie."""
+    force_secure = "true" if is_cookie_secure() else "false"
+    return f"""<script>
+    (function() {{
+        var isHttps = (window.location.protocol === 'https:') || (window.parent && window.parent.location.protocol === 'https:') || {force_secure};
+        var secureFlag = isHttps ? '; Secure' : '';
+        document.cookie = "lb_session_token=; path=/; max-age=0; SameSite=Lax" + secureFlag;
+    }})();
+    </script>"""
 
 
 def render_auth_page():
@@ -71,12 +125,7 @@ def render_auth_page():
                                 login_user(access_token, user_info)
                                 
                                 # Persist session in browser cookie for seamless page reload
-                                st.components.v1.html(
-                                    f"""<script>
-                                    document.cookie = "lb_session_token={access_token}; path=/; max-age=604800; SameSite=Lax";
-                                    </script>""",
-                                    height=0
-                                )
+                                st.components.v1.html(get_set_cookie_script(access_token), height=0)
                                 
                             st.success(f"Welcome back, {user_info.get('full_name', 'User')}!")
                             st.query_params.clear()
@@ -150,12 +199,7 @@ def render_auth_page():
                                 login_user(access_token, user_info)
                                 
                                 # Persist session in browser cookie for seamless page reload
-                                st.components.v1.html(
-                                    f"""<script>
-                                    document.cookie = "lb_session_token={access_token}; path=/; max-age=604800; SameSite=Lax";
-                                    </script>""",
-                                    height=0
-                                )
+                                st.components.v1.html(get_set_cookie_script(access_token), height=0)
                                 
                             st.success("Account successfully created!")
                             st.query_params.clear()

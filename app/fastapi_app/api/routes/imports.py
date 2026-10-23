@@ -4,8 +4,9 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from sqlalchemy.orm import Session
 
 from app.fastapi_app.api.deps import get_current_user, get_session
+from app.fastapi_app.core.config import settings
 from app.fastapi_app.schemas.import_job import ImportCommitResponse, ImportJobRead, ImportPreviewResponse
-from app.fastapi_app.services.import_service import ImportService
+from app.fastapi_app.services.import_service import ALLOWED_EXTENSIONS, ImportService
 
 router = APIRouter(prefix="/imports", tags=["Imports"])
 
@@ -38,8 +39,46 @@ async def upload_statement(
     current_user=Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
+    if not file.filename:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No filename provided.")
+
+    ext = file.filename.rsplit(".", 1)[-1].lower() if "." in file.filename else ""
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file type: '{ext}'. Allowed types: {', '.join(sorted(ALLOWED_EXTENSIONS))}",
+        )
+
+    # Check Content-Length / file size if available upfront
+    if file.size is not None and file.size > settings.max_upload_size_bytes:
+        raise HTTPException(
+            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            detail=f"File exceeds maximum allowed size of {settings.max_upload_size_mb}MB",
+        )
+
+    # Stream read file in chunks to prevent unbounded memory consumption
+    chunks: list[bytes] = []
+    total_bytes = 0
+    chunk_size = 64 * 1024  # 64 KB
+
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total_bytes += len(chunk)
+        if total_bytes > settings.max_upload_size_bytes:
+            raise HTTPException(
+                status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+                detail=f"File exceeds maximum allowed size of {settings.max_upload_size_mb}MB",
+            )
+        chunks.append(chunk)
+
+    if total_bytes == 0:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Uploaded file is empty.")
+
+    file_bytes = b"".join(chunks)
+
     try:
-        file_bytes = await file.read()
         return ImportService(session).process_upload(
             user_id=current_user.id,
             wallet_id=wallet_id,
@@ -47,7 +86,12 @@ async def upload_statement(
             original_filename=file.filename,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        msg = str(exc)
+        if "not found" in msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg) from exc
+        if "exceeds" in msg.lower():
+            raise HTTPException(status_code=status.HTTP_413_CONTENT_TOO_LARGE, detail=msg) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg) from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc
 
@@ -61,6 +105,9 @@ def commit_import(
     try:
         return ImportService(session).commit_import(current_user.id, job_id)
     except ValueError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+        msg = str(exc)
+        if "not found" in msg.lower():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=msg) from exc
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=msg) from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc)) from exc

@@ -1,11 +1,19 @@
-"""LedgerBud Entry Point — Multipage Streamlit Application."""
-
+import os
 import streamlit as st
 from dotenv import load_dotenv
 load_dotenv()  # Load .env variables
 
+# Mirror Streamlit Community Cloud secrets into os.environ for universal access
+try:
+    if hasattr(st, "secrets"):
+        for _k, _v in st.secrets.items():
+            if isinstance(_v, (str, int, float, bool)) and _k not in os.environ:
+                os.environ[_k] = str(_v)
+except Exception:
+    pass
+
 from ui.state import init_session_state, logout_user
-from ui.auth import render_auth_page
+from ui.auth import get_clear_cookie_script, render_auth_page
 from ui.api_client import api_client
 from ui.components.error_banner import render_error_banner
 
@@ -102,12 +110,7 @@ if st.session_state.get("authenticated", False):
         if st.button("Sign Out of Workspace", type="secondary", width="stretch"):
             logout_user()
             st.query_params.clear()
-            st.components.v1.html(
-                """<script>
-                document.cookie = "lb_session_token=; path=/; max-age=0; SameSite=Lax";
-                </script>""",
-                height=0
-            )
+            st.components.v1.html(get_clear_cookie_script(), height=0)
             st.rerun()
 
 # Execute page routing for current view (unauthenticated or authenticated)

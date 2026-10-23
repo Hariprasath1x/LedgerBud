@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import os
-
+import tempfile
+import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -20,12 +21,37 @@ from app.etl.transformer.deduplicator import detect_duplicates, NormalizedTransa
 from app.etl.transformer.recognition_engine import MerchantRecognitionEngine
 from app.etl.transformer.type_resolver import TransactionTypeResolver
 from app.etl.transformer.segmenter import segment_transactions
+from app.fastapi_app.core.config import settings
 from app.fastapi_app.models.merchant import Merchant
 from app.fastapi_app.models.wallet import Wallet
 
 
 ALLOWED_EXTENSIONS = {"pdf", "csv", "xlsx", "xls"}
-UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", "app/static/uploads")
+DEFAULT_UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), "ledgerbud_uploads")
+UPLOAD_FOLDER = os.environ.get("UPLOAD_FOLDER", DEFAULT_UPLOAD_FOLDER)
+MAX_STALE_FILE_AGE_SECONDS = 3600  # 1 hour
+
+
+def cleanup_stale_uploads(upload_folder: str | None = None, max_age_seconds: int = MAX_STALE_FILE_AGE_SECONDS) -> int:
+    """Safely prune abandoned temporary upload files older than max_age_seconds."""
+    target_dir = upload_folder or UPLOAD_FOLDER
+    if not os.path.isdir(target_dir):
+        return 0
+    now = time.time()
+    pruned = 0
+    try:
+        for fname in os.listdir(target_dir):
+            fpath = os.path.join(target_dir, fname)
+            if os.path.isfile(fpath):
+                try:
+                    if (now - os.path.getmtime(fpath)) > max_age_seconds:
+                        os.remove(fpath)
+                        pruned += 1
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    return pruned
 
 
 def _safe_float(val: object) -> float | None:
@@ -63,16 +89,40 @@ class ImportService:
         original_filename: str,
     ) -> ImportPreviewResponse:
         """Save file, run ETL extract + transform, return preview."""
-        ext = original_filename.rsplit(".", 1)[-1].lower()
-        if ext not in ALLOWED_EXTENSIONS:
-            raise ValueError(f"Unsupported file type: {ext}")
+        if not original_filename:
+            raise ValueError("No filename provided.")
 
-        os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        ext = original_filename.rsplit(".", 1)[-1].lower() if "." in original_filename else ""
+        if ext not in ALLOWED_EXTENSIONS:
+            raise ValueError(f"Unsupported file type: '{ext}'. Allowed types: {', '.join(sorted(ALLOWED_EXTENSIONS))}")
+
+        if not file_bytes or len(file_bytes) == 0:
+            raise ValueError("Uploaded file is empty.")
+
+        if len(file_bytes) > settings.max_upload_size_bytes:
+            raise ValueError(f"File exceeds maximum allowed size of {settings.max_upload_size_mb}MB")
+
+        # Verify wallet exists and belongs to the authenticated user
+        wallet = self.session.scalar(
+            select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == user_id)
+        )
+        if not wallet:
+            raise ValueError("Wallet not found for this user.")
+
+        os.makedirs(UPLOAD_FOLDER, mode=0o700, exist_ok=True)
+        cleanup_stale_uploads()
         stored_name = f"{uuid.uuid4().hex}.{ext}"
         file_path = os.path.join(UPLOAD_FOLDER, stored_name)
 
-        with open(file_path, "wb") as fh:
-            fh.write(file_bytes)
+        try:
+            with open(file_path, "wb") as fh:
+                fh.write(file_bytes)
+            try:
+                os.chmod(file_path, 0o600)
+            except OSError:
+                pass
+        except Exception as exc:
+            raise RuntimeError(f"Could not save upload file: {exc}") from exc
 
         # Create import job record
         job = ImportJob(
@@ -89,11 +139,16 @@ class ImportService:
 
         # Run ETL pipeline (Extract + Transform only — no DB write yet)
         try:
-            result = self._run_etl_extract(file_path, job.id, wallet_id)
+            result = self._run_etl_extract(file_path, job.id, wallet_id, user_id)
         except Exception as exc:
             job.status = "failed"
             job.error_message = str(exc)
             self.session.commit()
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
             raise
 
         # Store preview data on the job
@@ -150,6 +205,13 @@ class ImportService:
         if job.status not in ("preview", "processing"):
             raise ValueError(f"Job is in state '{job.status}'; cannot commit")
 
+        # Re-verify wallet authorization immediately before committing
+        wallet = self.session.scalar(
+            select(Wallet).where(Wallet.id == job.wallet_id, Wallet.user_id == user_id)
+        )
+        if not wallet:
+            raise ValueError("Wallet not found for this user.")
+
         file_path = os.path.join(UPLOAD_FOLDER, job.filename)
         if not os.path.exists(file_path):
             raise ValueError("Source file not found. Please re-upload the statement.")
@@ -160,14 +222,26 @@ class ImportService:
             job.status = "failed"
             job.error_message = str(exc)
             self.session.commit()
+            if os.path.exists(file_path):
+                try:
+                    os.remove(file_path)
+                except OSError:
+                    pass
             raise
 
         job.status = "completed"
         job.imported_count = result.get("imported_count", 0)
         job.duplicate_count = result.get("duplicate_count", 0)
         job.total_records = result.get("total_records", 0)
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now(timezone.utc).replace(tzinfo=None)
         self.session.commit()
+
+        # Clean up temporary file after successful commit
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except OSError:
+                pass
 
         return ImportCommitResponse(
             job_id=job.id,
@@ -236,19 +310,17 @@ class ImportService:
         norm.raw_description = raw_txn.description
         return norm
 
-    def _get_existing_fingerprints(self, wallet_id: int) -> list:
-        txns = self.session.scalars(select(Transaction).where(Transaction.wallet_id == wallet_id)).all()
+    def _get_existing_fingerprints(self, wallet_id: int, user_id: int) -> list:
+        txns = self.session.scalars(
+            select(Transaction).where(Transaction.wallet_id == wallet_id, Transaction.user_id == user_id)
+        ).all()
         return [
             {'date': t.transaction_date.isoformat(), 'amount': str(t.amount), 'description': t.notes or t.merchant_name}
             for t in txns
         ]
 
-    def _run_etl_extract(self, file_path: str, job_id: int, wallet_id: int) -> dict:
+    def _run_etl_extract(self, file_path: str, job_id: int, wallet_id: int, user_id: int) -> dict:
         """Extract and transform without saving."""
-        # Get user_id from job
-        job = self.session.scalar(select(ImportJob).where(ImportJob.id == job_id))
-        user_id = job.user_id if job else 0
-        
         engine = MerchantRecognitionEngine(self.session, user_id)
         type_resolver = TransactionTypeResolver()
         
@@ -277,7 +349,7 @@ class ImportService:
             except Exception:
                 failed += 1
                 
-        existing = self._get_existing_fingerprints(wallet_id)
+        existing = self._get_existing_fingerprints(wallet_id, user_id)
         unique_txns, dup_txns = detect_duplicates(normalized, existing)
         
         meta = ext_res.metadata
@@ -337,7 +409,7 @@ class ImportService:
             except Exception:
                 pass
                 
-        existing = self._get_existing_fingerprints(wallet_id)
+        existing = self._get_existing_fingerprints(wallet_id, user_id)
         unique_txns, dup_txns = detect_duplicates(normalized, existing)
         
         imported_count = 0
@@ -399,7 +471,7 @@ class ImportService:
                 pass
                 
         if unique_txns:
-            wallet = self.session.scalar(select(Wallet).where(Wallet.id == wallet_id))
+            wallet = self.session.scalar(select(Wallet).where(Wallet.id == wallet_id, Wallet.user_id == user_id))
             if wallet:
                 last_balance = [t.balance_after for t in unique_txns if t.balance_after]
                 if last_balance:

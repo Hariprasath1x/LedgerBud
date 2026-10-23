@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: ledgerbud-api
+    runtime: python
+    plan: free
+    region: oregon
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: alembic upgrade head && python run_fastapi.py
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTO_CREATE_TABLES
+        value: "false"
+      - key: CORS_ORIGINS
+        sync: false
+      - key: FIREBASE_API_KEY
+        sync: false
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+      - key: FIREBASE_SERVICE_ACCOUNT_KEY
+        sync: false
+      - key: USE_FIREBASE
+        value: "false"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: MAX_UPLOAD_SIZE_MB
+        value: "16"

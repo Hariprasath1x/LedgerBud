@@ -84,7 +84,8 @@ User Question:
                 timeout=15.0
             )
             
-            answer = completion.choices[0].message.content.strip()
+            content = completion.choices[0].message.content or ""
+            answer = content.strip()
             return AdvisorResponse(
                 answer=answer,
                 context_summary=context,
@@ -181,7 +182,8 @@ User Question:
                 max_tokens=1200,
                 timeout=15.0
             )
-            answer = completion.choices[0].message.content.strip()
+            content = completion.choices[0].message.content or ""
+            answer = content.strip()
             return AdvisorResponse(
                 answer=answer,
                 context_summary=combined_context,
