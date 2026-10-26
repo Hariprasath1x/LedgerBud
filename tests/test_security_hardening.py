@@ -291,13 +291,20 @@ def test_cookie_secure_flag_behavior(monkeypatch):
     assert is_cookie_secure() is False
 
 
+    # 4. Defensive iframe sandbox guarding (try-catch prevents cross-origin DOMExceptions)
+    assert "try" in dev_script
+    assert "catch" in dev_script
+
+
 def test_cookie_clear_script_behavior():
-    """Clear cookie script sets max-age=0 with matching SameSite and path."""
+    """Clear cookie script sets max-age=0 with matching SameSite, path, and sandbox try-catch guarding."""
     clear_script = get_clear_cookie_script()
     assert "lb_session_token=" in clear_script
     assert "max-age=0" in clear_script
     assert "SameSite=Lax" in clear_script
     assert "path=/" in clear_script
+    assert "try" in clear_script
+    assert "catch" in clear_script
 
 
 def test_cors_rejects_wildcard_with_credentials():

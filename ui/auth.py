@@ -61,9 +61,16 @@ def get_set_cookie_script(token: str, max_age: int = 604800) -> str:
     force_secure = "true" if is_cookie_secure() else "false"
     return f"""<script>
     (function() {{
-        var isHttps = (window.location.protocol === 'https:') || (window.parent && window.parent.location.protocol === 'https:') || {force_secure};
+        var isHttps = (window.location.protocol === 'https:') || {force_secure};
+        try {{
+            if (!isHttps && window.parent && window.parent !== window && window.parent.location && window.parent.location.protocol === 'https:') {{
+                isHttps = true;
+            }}
+        }} catch (_) {{}}
         var secureFlag = isHttps ? '; Secure' : '';
-        document.cookie = "lb_session_token={token}; path=/; max-age={max_age}; SameSite=Lax" + secureFlag;
+        try {{
+            document.cookie = "lb_session_token={token}; path=/; max-age={max_age}; SameSite=Lax" + secureFlag;
+        }} catch (_) {{}}
     }})();
     </script>"""
 
@@ -73,9 +80,16 @@ def get_clear_cookie_script() -> str:
     force_secure = "true" if is_cookie_secure() else "false"
     return f"""<script>
     (function() {{
-        var isHttps = (window.location.protocol === 'https:') || (window.parent && window.parent.location.protocol === 'https:') || {force_secure};
+        var isHttps = (window.location.protocol === 'https:') || {force_secure};
+        try {{
+            if (!isHttps && window.parent && window.parent !== window && window.parent.location && window.parent.location.protocol === 'https:') {{
+                isHttps = true;
+            }}
+        }} catch (_) {{}}
         var secureFlag = isHttps ? '; Secure' : '';
-        document.cookie = "lb_session_token=; path=/; max-age=0; SameSite=Lax" + secureFlag;
+        try {{
+            document.cookie = "lb_session_token=; path=/; max-age=0; SameSite=Lax" + secureFlag;
+        }} catch (_) {{}}
     }})();
     </script>"""
 

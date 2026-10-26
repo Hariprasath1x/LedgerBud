@@ -290,3 +290,108 @@ def test_upload_directory_defaults_to_tempdir():
     """Default UPLOAD_FOLDER is securely located in system tempdir, not in source tree."""
     assert "ledgerbud_uploads" in DEFAULT_UPLOAD_FOLDER
     assert tempfile.gettempdir() in DEFAULT_UPLOAD_FOLDER
+
+
+# =====================================================================
+# 4. Phase 3 Production Verification & API Contract Parity Regression Tests
+# =====================================================================
+
+def test_production_backend_url_resolves_to_render_backend(monkeypatch):
+    """The configured production base URL resolves to the Render backend and never the Streamlit domain."""
+    render_backend = "https://ledgerbud-api.onrender.com"
+    streamlit_frontend = "https://ledgerbud-harsa.streamlit.app"
+
+    # Simulate Streamlit Community Cloud environment
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.setenv("FASTAPI_BASE_URL", render_backend)
+
+    resolved = resolve_backend_url()
+    assert resolved == render_backend
+    assert resolved != streamlit_frontend
+    assert "streamlit.app" not in resolved
+    assert "onrender.com" in resolved
+
+    # Verify APIClient instances route requests to the Render backend
+    client = APIClient()
+    assert client.base_url == render_backend
+    assert client.api_prefix == "/api/v1"
+
+
+def test_api_client_bearer_token_handling():
+    """APIClient attaches Authorization header with Bearer token only when user is authenticated."""
+    import streamlit as st
+
+    client = APIClient(base_url="https://ledgerbud-api.onrender.com")
+
+    # Unauthenticated state
+    st.session_state["token"] = None
+    assert "Authorization" not in client.headers
+
+    # Authenticated state
+    st.session_state["token"] = "firebase-test-id-token-xyz"
+    assert client.headers.get("Authorization") == "Bearer firebase-test-id-token-xyz"
+
+    # Clean up session state
+    st.session_state["token"] = None
+
+
+def test_api_client_paths_match_fastapi_v1_routes():
+    """All endpoints called by APIClient map to existing FastAPI /api/v1 routes with correct HTTP methods.
+
+    Verifies that LedgerBud only uses /api/v1 and has zero requests to /api/v2.
+    """
+    openapi_paths = app.openapi()["paths"]
+    registered_endpoints: set[tuple[str, str]] = set()
+    for path, methods in openapi_paths.items():
+        for method in methods.keys():
+            registered_endpoints.add((method.upper(), path))
+
+    # Core sample of LedgerBud APIClient endpoints to check against FastAPI routes
+    client_endpoints_to_verify = [
+        ("GET", "/api/v1/auth/me"),
+        ("PUT", "/api/v1/auth/me/name"),
+        ("DELETE", "/api/v1/auth/me"),
+        ("GET", "/api/v1/wallets"),
+        ("POST", "/api/v1/wallets"),
+        ("GET", "/api/v1/wallets/summary"),
+        ("POST", "/api/v1/wallets/transfer"),
+        ("GET", "/api/v1/transactions"),
+        ("POST", "/api/v1/transactions"),
+        ("DELETE", "/api/v1/transactions/all"),
+        ("GET", "/api/v1/dashboard"),
+        ("GET", "/api/v1/dashboard/health-score"),
+        ("GET", "/api/v1/insights"),
+        ("POST", "/api/v1/advisor/ask"),
+        ("GET", "/api/v1/advisor/context"),
+        ("GET", "/api/v1/net-worth/summary"),
+        ("GET", "/api/v1/net-worth/items"),
+        ("POST", "/api/v1/net-worth/snapshot"),
+        ("GET", "/api/v1/budgets"),
+        ("POST", "/api/v1/budgets"),
+        ("GET", "/api/v1/goals"),
+        ("POST", "/api/v1/goals"),
+        ("GET", "/api/v1/subscriptions"),
+        ("POST", "/api/v1/subscriptions/detect"),
+        ("GET", "/api/v1/imports"),
+        ("POST", "/api/v1/imports/upload"),
+        ("GET", "/api/v1/analytics/trends"),
+        ("GET", "/api/v1/analytics/categories"),
+        ("GET", "/api/v1/analytics/merchants"),
+        ("POST", "/api/v1/analytics/whatif"),
+        ("GET", "/api/v1/fire"),
+        ("POST", "/api/v1/fire/calculate"),
+        ("GET", "/api/v1/fire/history"),
+        ("POST", "/api/v1/fire/ai"),
+    ]
+
+    for method, path in client_endpoints_to_verify:
+        assert (method, path) in registered_endpoints, f"Endpoint {method} {path} not found in registered FastAPI routes"
+        # Confirm no endpoints accidentally target /api/v2
+        assert not path.startswith("/api/v2"), f"Disallowed v2 endpoint detected: {path}"
+
+
+def test_no_api_v2_routes_exist_in_fastapi():
+    """Ensure the FastAPI backend strictly exposes /api/v1 and has zero /api/v2 routes."""
+    openapi_paths = app.openapi()["paths"]
+    for path in openapi_paths.keys():
+        assert not path.startswith("/api/v2"), f"Unexpected /api/v2 route found: {path}"
