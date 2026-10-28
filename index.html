@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -25,6 +26,17 @@
       height: 100dvh;
       border: none;
     }
+
+    .fallback {
+      padding: 12px;
+      text-align: center;
+      font-size: 14px;
+    }
+
+    .fallback a {
+      color: #166534;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -33,5 +45,19 @@
     title="LedgerBud Financial Intelligence Platform"
     allow="clipboard-write"
   ></iframe>
+
+  <noscript>
+    <p class="fallback">
+      <a href="https://ledgerbud-harsa.streamlit.app/">
+        Open LedgerBud directly
+      </a>
+    </p>
+  </noscript>
+
+  <p class="fallback">
+    If LedgerBud doesn't load,
+    <a href="https://ledgerbud-harsa.streamlit.app/" target="_blank"
+       rel="noopener noreferrer">open the app directly</a>.
+  </p>
 </body>
 </html>
